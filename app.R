@@ -1,37 +1,8 @@
-#
-# This is a Shiny web application. You can run the application by clicking
-# the 'Run App' button above.
-#
-# Find out more about building applications with Shiny here:
-#
-#    http://shiny.rstudio.com/
-#
-#aneuDat = young1
-#saveRDS(aneuDat, "testDat.rds")
-#aneuDat <- readRDS("testDat.rds")#./testDat.rds")
-library(tidyverse)
 library(shiny)
+library(readxl)
+library(data.table)
 
-create_perc_matr2 <- function(matr, title, minChr, maxChr, xlab, ylab){
-  tot= sum(matr$n)
-  gridSize <- maxChr - minChr + 1
-  x <- ggplot(matr, aes(x = X1, y = X2, fill= propFill)) + 
-    geom_tile(color = "black") +  
-    theme_classic() +
-    theme(axis.text=element_text(size=19, colour = "black"), 
-          axis.line = element_blank(), axis.ticks = element_blank()) +
-    scale_fill_gradient(low = "white", high = "firebrick3", limits = c(0,2)) + 
-    geom_text(size = 4.5, aes(label = propChar)) + 
-    coord_fixed() +
-    xlab(xlab) + 
-    ylab(ylab) + 
-    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
-    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
-    ggtitle(paste0("% Aneuploidy Across ", tot, " ", title, "Observations"))
-  #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
-  return(x)
-}
-
+source("scripts/helper_scripts.R")
 
 ui <- fluidPage(
   titlePanel("aneuvis v.0.1"),
@@ -50,7 +21,6 @@ ui <- fluidPage(
       textInput(inputId = "xlab", label = "x-axis title:", value = "Chr_column_1"),
       textInput(inputId = "ylab", label = "y-axis title:", value = "Chr_column_2"),
       
-      
       sliderInput("minChr", "Smallest Chr #:",
                   min = 0, max = 10,
                   value = 1),
@@ -62,51 +32,153 @@ ui <- fluidPage(
     mainPanel = mainPanel(
       h3(textOutput("caption")),
       plotOutput("gridPlot"))
-    )
   )
+)
 
 
 server <- function(input, output) {
-
-  formulaText <- reactive({
-    paste(input$titletxt)
+  mycsvs<-reactive({
+    rbindlist(lapply(input$csvs$datapath, fread),
+              use.names = TRUE, fill = TRUE)
   })
- 
-  output$caption <- renderText({
-    formulaText()
-  })
+  #print(head(mycsvs))
+  output$count <- renderText(c(nrow(mycsvs()), ncol(mycsvs())))
+}
 
-  output$gridPlot <- renderPlot({
-    req(input$file1)
-    df <- readxl::read_excel(input$file1$datapath)
-    aneuDat <- df#[1:2,]
-    minChr <- input$minChr#1
-    maxChr <- input$maxChr#9
-    gridSize <- maxChr - minChr + 1
-    all_perms = data.frame(gtools::permutations(maxChr-minChr + 1, 2, repeats.allowed = T)) + minChr - 1
-    
-    all_perms2 = all_perms %>%
-      as_tibble() %>%
-      mutate(join_chr_state=paste(X1, X2, sep="_"))
-    
-    aneuDatTbl <- table(aneuDat) %>% 
-      as_tibble %>% 
-      unite("join_chr_state", 1:2, sep = "_") %>%
-      right_join(all_perms2, by=c("join_chr_state")) %>% 
-      replace_na(list(n=0)) %>% 
-      select(n, X1, X2) %>% 
-      mutate(prop=n/sum(n),
-             prop100=round(prop*100, 1),
-             propChar=ifelse(prop100 !=0, prop100, "·"),
-             propFill=log(prop*100+1, 10))
+shinyApp(ui, server)
 
-    create_perc_matr2(aneuDatTbl, title = "test", 
-                      minChr=input$minChr, maxChr=input$maxChr, 
-                      xlab = input$xlab, ylab = input$ylab)
+
+##########
+
+library(shiny)
+library(readxl)
+library(tidyverse)
+library(here)
+library(janitor)
+source("scripts/helper_scripts.R")
+
+# Define UI for data upload app ----
+ui <- fluidPage(
+  
+  # App title ----
+  titlePanel("aneuvis v.0.2"),
+  
+  # Sidebar layout with input and output definitions ----
+  sidebarLayout(
+    
+    # Sidebar panel for inputs ----
+    sidebarPanel(
+      fileInput(inputId = "files", label = "Upload", multiple = TRUE, accept = c(".xlsx")),
+      textOutput(outputId = "name_out"),
+      verbatimTextOutput(outputId = "ploidyTbl")
+    ),
+    
+    # Main panel for displaying outputs ----
+    mainPanel(
+      # Output: Data file ----
+      
+      dataTableOutput("tbl_out"),
+      uiOutput("plots"),
+      textOutput("tbl_out2")
+    )
+    
+  )
+)
+
+# Define server logic to read selected file ----
+server <- function(input, output) {
+  
+  aneuDat_r <- reactive({
+    validate(need(input$files != "", "aneupl prop..."))
+    
+    if (is.null(input$files)) {
+      return(NULL)
+    } else {
+      
+      maxChr = 8
+      maxChrPlus1 = maxChr + 1
+      
+      path_list <- as.list(input$files$datapath)
+      #fileinput: 'name', 'size', 'type' and 'datapath'.
+      tbl_list <- lapply(input$files$datapath, read_xlsx)
+      
+      aneuDat <- map2(.x = input$files$name, .y= tbl_list, .f = ~data.frame(class=.x, .y)) %>% 
+        do.call(rbind, .) %>% 
+        as_tibble() %>% 
+        clean_names() %>%
+        mutate(ploidy =  apply(.[,2:ncol(.)], 1, classifPloidy)) %>% 
+        mutate_at(.vars = vars(starts_with("Chr")), 
+                  .funs = ~ifelse(. == 0, 1, 
+                                  ifelse(. <= maxChr, ., maxChrPlus1)))
+      return(aneuDat)
+    }
   })
   
+  lst2 <- reactive({
+      #path_list <- as.list(input$files$datapath)
+      name_list <- paste0(input$files$name, collapse = ", ")
+      
+      #fileinput: 'name', 'size', 'type' and 'datapath'.
+      #tbl_list <- lapply(input$files$datapath, read_xlsx)
+      #df <- do.call(rbind, tbl_list)
+      return(name_list)
+    })
+  
+  output$tbl_out <- renderDataTable({
+    aneuDat_r()
+  })
+  output$tbl_out2 <- renderPrint({
+    letter_ids = names(table(aneuDat_r()[,1]))
+    return(list(letter_ids, colnames(aneuDat_r())))
+  })
+  output$name_out <- renderText({
+    lst2()
+  })
+  output$ploidyTbl <- renderPrint({
+    table(aneuDat_r()$ploidy, aneuDat_r()$class) #returns html
+  })
+  
+  output$plots <- renderUI({
+    plot_output_list <- lapply(1:length(unique(aneuDat_r()$class)), function(i) {
+    plotname <- paste("plot", i, sep="")
+    plotOutput(plotname, height = 280, width = 250)
+    })
+    
+    # Convert the list to a tagList - this is necessary for the list of items
+    # to display properly.
+    do.call(tagList, plot_output_list)
+  })
+  
+  max_plots <- isolate(length(unique(aneuDat_r()$class)))
+  for (i in 1:max_plots) {
+    # Need local so that each item gets its own number. Without it, the value
+    # of i in the renderPlot() will be the same across all instances, because
+    # of when the expression is evaluated.
+    local({
+      my_i <- i
+      plotname <- paste("plot", my_i, sep="")
+      
+      output[[plotname]] <- renderPlot({
+        letter_ids <- names(table(aneuDat_r()$class))      
+        
+        matr_list_all <- lapply(letter_ids, function(x)
+          return_chr_prop_matr(aneuDat_r(),x, maxPair = maxChrPlus1)
+        )
+        names(matr_list_all) = letter_ids
+        gridPlots <- matr_list_all[my_i] %>% 
+          map2(.y=names(.),.f=~create_perc_matr2(matr = .x, 
+                                                 title = .y, minChr = 1, maxChr = maxChrPlus1, 
+                                                 xlab = "", ylab=""))
+        return(gridPlots)
+      })
+    })
+  }
 }
-# Run the application 
+#shiny solution to the reset button
+#could also use shinyjs for this (likely)
+#https://groups.google.com/forum/#!topic/shiny-discuss/HbTa4v612FA
 
-shinyApp(ui = ui, server = server)
+# Create Shiny app ----
+shinyApp(ui, server)
+
 
