@@ -14,7 +14,7 @@ ui <- shinyUI(pageWithSidebar(
       tabPanel("Grid Plots", uiOutput("gridPlots")), 
       tabPanel("Table", tableOutput("table")),
       tabPanel("Ternary Plot", plotOutput("ternPlot")),
-      tabPanel("Entropy Plot", plotOutput("entropyPlot"))
+      tabPanel("Entropy Plot", plotOutput("ploidyPlot"), plotOutput("entropyPlot"))
     )
   )
 ))
@@ -50,30 +50,57 @@ server <- shinyServer(function(input, output) {
   })
   
   aneuDat_ploidy_tbl <- reactive({
-    aneuDat_r() %>% 
+    #aneuDat_r() %>% 
+    #aneuDat_test2 <- aneuDat_test %>%
+      aneuDat_r() %>% 
+      mutate(ploidy= factor(ploidy, levels=c("diploid", "polyploid", "aneuploid"))) %>%
       group_by(clss, ploidy) %>%
-      summarise (n = n()) %>%
+      summarise(n = n()) %>%
+      complete(ploidy) %>% #clss, 
+      replace(is.na(.), 0) %>%
       mutate(freq = n / sum(n)) %>% 
       ungroup %>%
       select(-n) %>%
       spread(key = ploidy, value = freq) %>%
       replace(is.na(.), 0)
+    # add a 0 here
   })
   
-  output$entropyPlot <- renderPlot({
-    #aneuDat_test2
+  aneuDat_ploidy_tbl_for_plot <- reactive({
     aneuDat_ploidy_tbl() %>%
       dplyr::mutate(entropy=purrr::pmap_dbl(.[,-1], ~entropy::entropy(c(...)))) %>%
       gather(key = "ploidy", value = "prop", 2:5) %>%
       mutate(ploidy = factor(ploidy, 
-             levels = rev(c("diploid", "polyploid", "aneuploid", "entropy")))) %>%
- 
-     ggplot(aes(x=clss, y=ploidy, fill=as.numeric(prop))) + 
-     geom_tile() + 
-     geom_text(aes(label = round(prop, 2))) + 
-     scale_fill_distiller(type = "seq", palette = 5, direction = 1, name = "Entropy") + 
-     theme_classic() + 
-     theme(aspect.ratio = 1, axis.title=element_blank(),
+                             levels = rev(c("diploid", "polyploid", "aneuploid", "entropy"))))
+  })
+  
+  output$ploidyPlot <- renderPlot({
+    #aneuDat_test2
+    aneuDat_ploidy_tbl_for_plot() %>% 
+      filter(ploidy != "entropy") %>%
+      ggplot(aes(x=clss, y=ploidy, fill=as.numeric(prop))) + 
+      geom_tile(color="black") + 
+      geom_text(aes(label = round(prop, 2))) + 
+      scale_fill_distiller(type = "seq", palette = "Purples", direction = 1, name = "% Ploidy") + 
+      theme_classic() + 
+      coord_fixed() + 
+      theme(axis.title=element_blank(),
+            axis.ticks=element_blank(),
+            line = element_blank(),
+            axis.text.x = element_text(angle = 90, hjust = 1))
+  })
+  
+  output$entropyPlot <- renderPlot({
+    #aneuDat_test2
+   aneuDat_ploidy_tbl_for_plot() %>% 
+      filter(ploidy == "entropy") %>%
+      ggplot(aes(x=clss, y=ploidy, fill=as.numeric(prop))) + 
+      geom_tile(color="black") + 
+      geom_text(aes(label = round(prop, 2))) + 
+      scale_fill_distiller(type = "seq", palette = 5, direction = 1, name = "Entropy") + 
+      theme_classic() + 
+      coord_fixed() + 
+      theme(axis.title=element_blank(),
             axis.ticks=element_blank(),
             line = element_blank(),
            axis.text.x = element_text(angle = 90, hjust = 1))
@@ -82,13 +109,19 @@ server <- shinyServer(function(input, output) {
 
 
   output$ternPlot <- renderPlot({
-    ggtern() + 
+    p <- ggtern() + 
       geom_point(data=aneuDat_ploidy_tbl(), 
-                 aes(x = aneuploid,y=diploid,z=polyploid,
-                     fill = clss, label = clss), 
-                 size = 3, alpha = 0.4, pch= 21, color = "black", stroke = 1) + 
-      limit_tern(1.03,1.03,1.03) + 
-      geom_text()
+         aes(x = aneuploid,y=diploid,z=polyploid,
+             fill = clss, label = clss), 
+         size = 3, alpha = 0.4, pch= 21, color = "black", stroke = 1) + 
+    limit_tern(1.03,1.03,1.03) + 
+    xlab("") + 
+    Tlab("Diploid") +
+    Llab("Aneuploid") +
+    Rlab("Polyploid") 
+    #Tarrowlab("Top Arrow Label") + Larrowlab("Left Arrow Label")
+    print(p)
+    NULL
   })
   
   
