@@ -45,7 +45,7 @@ create_perc_matr2 <- function(matr, title, minChr, maxChr, xlab, ylab){
     ylab(ylab) + 
     scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
     scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
-    ggtitle(paste0("% Aneuploidy Across ", tot, " ", title, "Observations"))
+    ggtitle(paste0("% aneuploidy across ", tot, " observations\nfile: ", title))
   #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
   return(x)
 }

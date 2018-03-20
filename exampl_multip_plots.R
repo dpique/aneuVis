@@ -1,24 +1,27 @@
 
-max_plots <- 10 # *maximum* total number of plots
+max_plots <- 20 # *maximum* total number of plots
 
 ui <- shinyUI(pageWithSidebar(
   
-  headerPanel("Dynamic number of plots"),
+  headerPanel("aneuvis vers. 0.2"),
   
   sidebarPanel(
       fileInput(inputId = "files", label = "Upload", multiple = TRUE, accept = c(".xlsx"))
   ),
   
   mainPanel(
-    # This is the dynamic UI for the plots
-    uiOutput("plots")
+    tabsetPanel(
+      tabPanel("Grid Plots", uiOutput("gridPlots")), 
+      tabPanel("Table", tableOutput("table")),
+      tabPanel("Ternary Plot", plotOutput("ternPlot")),
+      tabPanel("Entropy Plot", plotOutput("entropyPlot"))
+    )
   )
 ))
 
 
 server <- shinyServer(function(input, output) {
-  # Insert the right number of plot output objects into the web page
-  
+
   aneuDat_r <- reactive({
     validate(need(input$files != "", "aneupl prop..."))
     
@@ -33,7 +36,8 @@ server <- shinyServer(function(input, output) {
       #fileinput: 'name', 'size', 'type' and 'datapath'.
       tbl_list <- lapply(input$files$datapath, read_xlsx)
       
-      aneuDat <- map2(.x = input$files$name, .y= tbl_list, .f = ~data.frame(clss=.x, .y)) %>% 
+      aneuDat <- map2(.x = input$files$name, .y= tbl_list,
+                      .f = ~data.frame(clss=.x, .y)) %>% 
         do.call(rbind, .) %>% 
         as_tibble() %>% 
         clean_names() %>%
@@ -45,41 +49,78 @@ server <- shinyServer(function(input, output) {
     }
   })
   
+  aneuDat_ploidy_tbl <- reactive({
+    aneuDat_r() %>% 
+      group_by(clss, ploidy) %>%
+      summarise (n = n()) %>%
+      mutate(freq = n / sum(n)) %>% 
+      ungroup %>%
+      select(-n) %>%
+      spread(key = ploidy, value = freq) %>%
+      replace(is.na(.), 0)
+  })
   
-  output$plots <- renderUI({
-    #input$n replaced with cl_ln
+  output$entropyPlot <- renderPlot({
+    #aneuDat_test2
+    aneuDat_ploidy_tbl() %>%
+      dplyr::mutate(entropy=purrr::pmap_dbl(.[,-1], ~entropy::entropy(c(...)))) %>%
+      gather(key = "ploidy", value = "prop", 2:5) %>%
+      mutate(ploidy = factor(ploidy, 
+             levels = rev(c("diploid", "polyploid", "aneuploid", "entropy")))) %>%
+ 
+     ggplot(aes(x=clss, y=ploidy, fill=as.numeric(prop))) + 
+     geom_tile() + 
+     geom_text(aes(label = round(prop, 2))) + 
+     scale_fill_distiller(type = "seq", palette = 5, direction = 1, name = "Entropy") + 
+     theme_classic() + 
+     theme(aspect.ratio = 1, axis.title=element_blank(),
+            axis.ticks=element_blank(),
+            line = element_blank(),
+           axis.text.x = element_text(angle = 90, hjust = 1))
+  })
+  
+
+
+  output$ternPlot <- renderPlot({
+    ggtern() + 
+      geom_point(data=aneuDat_ploidy_tbl(), 
+                 aes(x = aneuploid,y=diploid,z=polyploid,
+                     fill = clss, label = clss), 
+                 size = 3, alpha = 0.4, pch= 21, color = "black", stroke = 1) + 
+      limit_tern(1.03,1.03,1.03) + 
+      geom_text()
+  })
+  
+  
+  output$table <- renderTable({
+    aneuDat_ploidy_tbl()
+  })
+  
+  output$gridPlots <- renderUI({
     cl_ln <- length(unique(aneuDat_r()$clss))
     plot_output_list <- lapply(1:cl_ln, function(i) {
       plotname <- paste("plot", i, sep="")
-      plotOutput(plotname, height = 280, width = 250)
+      plotOutput(plotname, height = 450, width = 450)
     })
     
-    # Convert the list to a tagList - this is necessary for the list of items
-    # to display properly.
     do.call(tagList, plot_output_list)
   })
 
   classes <- reactive({unique(aneuDat_r()$clss)})
+  #fileinput: 'name', 'size', 'type' and 'datapath'.
+  file_names <- reactive({input$files$name})
   
-  # Call renderPlot for each one. Plots are only actually generated when they
-  # are visible on the web page.
   for (i in 1:max_plots) {
-    # Need local so that each item gets its own number. Without it, the value
-    # of i in the renderPlot() will be the same across all instances, because
-    # of when the expression is evaluated.
-    local({
+     local({
       my_i <- i
       plotname <- paste("plot", my_i, sep="")
       
       output[[plotname]] <- renderPlot({
         cls <- classes()[my_i]
-        #aneuDat2 <- aneuDat_r() %>% filter(clss == cls)
-        #hist(aneuDat2$chr_17, main = classes()[my_i])
-        
         maxChr = 8
         maxChrPlus1 = maxChr + 1
-        matr_plot <- return_chr_prop_matr(aneuDat_r(),cls, maxPair = maxChrPlus1) #
-        plt <- create_perc_matr2(matr_plot, title = "", minChr = 1, 
+        matr_plot <- return_chr_prop_matr(aneuDat_r(),cls, maxPair = maxChrPlus1)
+        plt <- create_perc_matr2(matr_plot, title = file_names()[my_i], minChr = 1, 
                           maxChr = maxChrPlus1, xlab = "", ylab="")
         return(plt)
         
