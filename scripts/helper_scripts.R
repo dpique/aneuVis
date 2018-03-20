@@ -13,12 +13,13 @@ classifPloidy = function(x){
 return_chr_prop_matr <- function(chromosomes, ltr, maxPair){
   all_perms = as.data.frame(gtools::permutations(maxPair, 2, repeats.allowed = T)) %>%
     mutate(chrPaste=paste0(V1, V2))
-  
+  #chromosomes <- aneuDat_test %>% rename(clss=class)
+  #ltr <- "test_aneupl_file_2.xlsx"
   chromosomes2 <- chromosomes %>%
-    filter(class == ltr) %>%
+    filter(clss == ltr) %>%
     group_by_(colnames(.)[2], colnames(.)[3]) %>%
     count() %>%
-    ungroup %>%
+    ungroup() %>%
     mutate(prop = n/sum(n), 
            prop.r =  round(prop*100, 1)) %>%
     unite(col = chrPaste, 1:2, sep = "",remove = FALSE) %>%

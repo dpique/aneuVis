@@ -69,7 +69,10 @@ server <- function(input, output) {
     )
     names(matr_list_all) = letter_ids
     #r#eturn(data.frame(matr_list_all[[1]]))
-    matr_list_all3 <- map_df(.x=matr_list_all,.f = I, .id="src")
+     matr_list_all3 <- map_df(.x=matr_list_all,.f = I, .id="src")
+    # create_perc_matr3(matr_list_all2, title = "", minChr = 1, 
+                       ##                        maxChr = maxChrPlus1, xlab = "", ylab="")
+                       
     return(matr_list_all3)
   })
   

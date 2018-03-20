@@ -1,6 +1,5 @@
 
-#iris
-max_plots <- 10 #max total number of plots
+max_plots <- 10 # *maximum* total number of plots
 
 ui <- shinyUI(pageWithSidebar(
   
@@ -16,7 +15,6 @@ ui <- shinyUI(pageWithSidebar(
   )
 ))
 
-#look at facet_grid
 
 server <- shinyServer(function(input, output) {
   # Insert the right number of plot output objects into the web page
@@ -75,8 +73,16 @@ server <- shinyServer(function(input, output) {
       
       output[[plotname]] <- renderPlot({
         cls <- classes()[my_i]
-        aneuDat2 <- aneuDat_r() %>% filter(clss == cls)
-        hist(aneuDat2$chr_17, main = classes()[my_i])
+        #aneuDat2 <- aneuDat_r() %>% filter(clss == cls)
+        #hist(aneuDat2$chr_17, main = classes()[my_i])
+        
+        maxChr = 8
+        maxChrPlus1 = maxChr + 1
+        matr_plot <- return_chr_prop_matr(aneuDat_r(),cls, maxPair = maxChrPlus1) #
+        plt <- create_perc_matr2(matr_plot, title = "", minChr = 1, 
+                          maxChr = maxChrPlus1, xlab = "", ylab="")
+        return(plt)
+        
       })
     })
   }
