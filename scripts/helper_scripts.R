@@ -48,3 +48,26 @@ create_perc_matr2 <- function(matr, title, minChr, maxChr, xlab, ylab){
   #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
   return(x)
 }
+
+
+create_perc_matr3 <- function(matr, title, minChr, maxChr, xlab, ylab){
+  tot= sum(matr$n)
+  gridSize <- maxChr - minChr + 1
+  x <- ggplot(matr, aes(x = V1, y = V2, fill = log(prop*100+1, 10))) + 
+    geom_tile(color = "black") +  
+    theme_classic() +
+    theme(axis.text=element_text(size=19, colour = "black"), 
+          axis.line = element_blank(), axis.ticks = element_blank()) +
+    scale_fill_gradient(low = "white", high = "firebrick3", limits = c(0,2)) + 
+    geom_text(size = 4.5, aes(label = prop.r.cl)) + 
+    coord_fixed() +
+    xlab(xlab) + 
+    ylab(ylab) + 
+    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
+    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
+    facet_grid(src~.) + 
+    ggtitle(paste0("% Aneuploidy Across ", tot, " ", title, "Observations"))
+  #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
+  return(x)
+}
+

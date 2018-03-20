@@ -1,54 +1,3 @@
-library(shiny)
-library(readxl)
-library(data.table)
-
-source("scripts/helper_scripts.R")
-
-ui <- fluidPage(
-  titlePanel("aneuvis v.0.1"),
-  sidebarLayout(
-    sidebarPanel = sidebarPanel(
-      
-      fileInput("file1", "Choose Excel File",
-                multiple = TRUE,
-                accept = c("text/csv",
-                           "text/comma-separated-values,text/plain",
-                           ".csv",
-                           "application/vnd.ms-excel",
-                           "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")),
-      tags$hr(),
-      textInput(inputId = "titletxt", label = "Insert main title here", value = "title"),
-      textInput(inputId = "xlab", label = "x-axis title:", value = "Chr_column_1"),
-      textInput(inputId = "ylab", label = "y-axis title:", value = "Chr_column_2"),
-      
-      sliderInput("minChr", "Smallest Chr #:",
-                  min = 0, max = 10,
-                  value = 1),
-      sliderInput("maxChr", "Largest Chr. #:",
-                  min = 2, max = 100,
-                  value = 9)
-    ), 
-    
-    mainPanel = mainPanel(
-      h3(textOutput("caption")),
-      plotOutput("gridPlot"))
-  )
-)
-
-
-server <- function(input, output) {
-  mycsvs<-reactive({
-    rbindlist(lapply(input$csvs$datapath, fread),
-              use.names = TRUE, fill = TRUE)
-  })
-  #print(head(mycsvs))
-  output$count <- renderText(c(nrow(mycsvs()), ncol(mycsvs())))
-}
-
-shinyApp(ui, server)
-
-
-##########
 
 library(shiny)
 library(readxl)
@@ -68,20 +17,16 @@ ui <- fluidPage(
     
     # Sidebar panel for inputs ----
     sidebarPanel(
-      fileInput(inputId = "files", label = "Upload", multiple = TRUE, accept = c(".xlsx")),
-      textOutput(outputId = "name_out"),
-      verbatimTextOutput(outputId = "ploidyTbl")
+      fileInput(inputId = "files", label = "Upload", multiple = TRUE, accept = c(".xlsx"))
     ),
     
     # Main panel for displaying outputs ----
     mainPanel(
-      # Output: Data file ----
-      
-      dataTableOutput("tbl_out"),
-      uiOutput("plots"),
-      textOutput("tbl_out2")
+      dataTableOutput("tbl_out")
+      #plotOutput("plot_out")
+      #verbatimTextOutput("plot_out")
+      #uiOutput("plots")
     )
-    
   )
 )
 
@@ -114,65 +59,37 @@ server <- function(input, output) {
     }
   })
   
-  lst2 <- reactive({
-      #path_list <- as.list(input$files$datapath)
-      name_list <- paste0(input$files$name, collapse = ", ")
-      
-      #fileinput: 'name', 'size', 'type' and 'datapath'.
-      #tbl_list <- lapply(input$files$datapath, read_xlsx)
-      #df <- do.call(rbind, tbl_list)
-      return(name_list)
-    })
-  
   output$tbl_out <- renderDataTable({
-    aneuDat_r()
-  })
-  output$tbl_out2 <- renderPrint({
-    letter_ids = names(table(aneuDat_r()[,1]))
-    return(list(letter_ids, colnames(aneuDat_r())))
-  })
-  output$name_out <- renderText({
-    lst2()
-  })
-  output$ploidyTbl <- renderPrint({
-    table(aneuDat_r()$ploidy, aneuDat_r()$class) #returns html
-  })
-  
-  output$plots <- renderUI({
-    plot_output_list <- lapply(1:length(unique(aneuDat_r()$class)), function(i) {
-    plotname <- paste("plot", i, sep="")
-    plotOutput(plotname, height = 280, width = 250)
-    })
-    
-    # Convert the list to a tagList - this is necessary for the list of items
-    # to display properly.
-    do.call(tagList, plot_output_list)
+    #aneuDat_r()
+    maxChr = 8
+    maxChrPlus1 = maxChr + 1
+    letter_ids <- names(table(aneuDat_r()$class))
+    matr_list_all <- lapply(letter_ids, function(x)
+      return_chr_prop_matr(aneuDat_r(),x, maxPair = maxChrPlus1)
+    )
+    names(matr_list_all) = letter_ids
+    #r#eturn(data.frame(matr_list_all[[1]]))
+    matr_list_all3 <- map_df(.x=matr_list_all,.f = I, .id="src")
+    return(matr_list_all3)
   })
   
-  max_plots <- isolate(length(unique(aneuDat_r()$class)))
-  for (i in 1:max_plots) {
-    # Need local so that each item gets its own number. Without it, the value
-    # of i in the renderPlot() will be the same across all instances, because
-    # of when the expression is evaluated.
-    local({
-      my_i <- i
-      plotname <- paste("plot", my_i, sep="")
-      
-      output[[plotname]] <- renderPlot({
-        letter_ids <- names(table(aneuDat_r()$class))      
-        
-        matr_list_all <- lapply(letter_ids, function(x)
-          return_chr_prop_matr(aneuDat_r(),x, maxPair = maxChrPlus1)
-        )
-        names(matr_list_all) = letter_ids
-        gridPlots <- matr_list_all[my_i] %>% 
-          map2(.y=names(.),.f=~create_perc_matr2(matr = .x, 
-                                                 title = .y, minChr = 1, maxChr = maxChrPlus1, 
-                                                 xlab = "", ylab=""))
-        return(gridPlots)
-      })
-    })
-  }
+##  output$plot_out <- renderPrint({ #renderPlot({
+##      maxChr = 8
+##      maxChrPlus1 = maxChr + 1
+##      
+##      letter_ids <- names(table(aneuDat_r()$class))
+##      #return(letter_ids)
+##      matr_list_all <- lapply(letter_ids, function(x)
+##        return_chr_prop_matr(aneuDat_r(),x, maxPair = maxChrPlus1)
+##      )
+##      names(matr_list_all) = letter_ids
+##      #matr_list_all2 <- do.call(rbind,matr_list_all) %>%
+##      #  map_df(.f = I, .id="src")
+##      #matr_list_all_test3 <- map_df(.x = matr_list_all_test, .f = I, .id="src")
+##      plt <- create_perc_matr3(matr_list_all2, title = "", minChr = 1, 
+##                        maxChr = maxChrPlus1, xlab = "", ylab="")
+##      return(letter_ids)
+##    })
 }
 #shiny solution to the reset button
 #could also use shinyjs for this (likely)
@@ -180,5 +97,4 @@ server <- function(input, output) {
 
 # Create Shiny app ----
 shinyApp(ui, server)
-
 
