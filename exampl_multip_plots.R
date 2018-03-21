@@ -1,9 +1,17 @@
+library(shiny)
+#library(shinyjs) 
+library(readxl)
+library(tidyverse)
+library(here)
+library(janitor)
+library(ggtern)
+source("scripts/helper_scripts.R")
 
 max_plots <- 20 # *maximum* total number of plots
 
 ui <- shinyUI(pageWithSidebar(
   
-  headerPanel("aneuvis vers. 0.2"),
+  headerPanel("aneuvis v.0.2"),
   
   sidebarPanel(
       fileInput(inputId = "files", label = "Upload", multiple = TRUE, accept = c(".xlsx"))
@@ -14,7 +22,7 @@ ui <- shinyUI(pageWithSidebar(
       tabPanel("Grid Plots", uiOutput("gridPlots")), 
       tabPanel("Table", tableOutput("table")),
       tabPanel("Ternary Plot", plotOutput("ternPlot")),
-      tabPanel("Entropy Plot", plotOutput("ploidyPlot"), plotOutput("entropyPlot"))
+      tabPanel("Entropy Plot", plotOutput("ploidyPlot"))#, plotOutput("entropyPlot"))
     )
   )
 ))
@@ -52,7 +60,7 @@ server <- shinyServer(function(input, output) {
   aneuDat_ploidy_tbl <- reactive({
     #aneuDat_r() %>% 
     #aneuDat_test2 <- aneuDat_test %>%
-      aneuDat_r() %>% 
+    aneuDat_r() %>% 
       mutate(ploidy= factor(ploidy, levels=c("diploid", "polyploid", "aneuploid"))) %>%
       group_by(clss, ploidy) %>%
       summarise(n = n()) %>%
@@ -68,6 +76,7 @@ server <- shinyServer(function(input, output) {
   
   aneuDat_ploidy_tbl_for_plot <- reactive({
     aneuDat_ploidy_tbl() %>%
+    #aneuDat_test3 <- aneuDat_test2 %>%
       dplyr::mutate(entropy=purrr::pmap_dbl(.[,-1], ~entropy::entropy(c(...)))) %>%
       gather(key = "ploidy", value = "prop", 2:5) %>%
       mutate(ploidy = factor(ploidy, 
@@ -75,36 +84,63 @@ server <- shinyServer(function(input, output) {
   })
   
   output$ploidyPlot <- renderPlot({
-    #aneuDat_test2
-    aneuDat_ploidy_tbl_for_plot() %>% 
-      filter(ploidy != "entropy") %>%
-      ggplot(aes(x=clss, y=ploidy, fill=as.numeric(prop))) + 
+      #mutate(ent_yn = ploidy == "entropy") %>%
+      #filter(ploidy != "entropy") %>%
+    #aneuDat_test4 <- aneuDat_test3 %>% 
+    brw_clrs <- c(rev(RColorBrewer::brewer.pal(n = 8, name = "Purples")), "#ffffff",
+                      RColorBrewer::brewer.pal(n = 8, name = "Oranges"))
+    
+    aneuDat_ploidy_tbl_for_plot() %>%
+        mutate(prop2 = ifelse(ploidy == "entropy", -prop, prop)) %>%
+        mutate(prop_cut = cut(.$prop2, breaks = c(-Inf, seq(-1, -0.1, .15), -1e-6, 1e-6, 
+                                                  seq(0.1, 1, .15), Inf), 
+                              labels = c(paste0(">", c(seq(1, 0.1, -.15),0)), 0, 
+                                                rev(paste0(">", c(seq(1, 0.1, -.15),0), " ")))),
+               prop_cut = factor(prop_cut, levels = rev(levels(prop_cut))))  %>%
+    ggplot(aes(x=clss, y=ploidy, fill=prop_cut)) + 
       geom_tile(color="black") + 
       geom_text(aes(label = round(prop, 2))) + 
-      scale_fill_distiller(type = "seq", palette = "Purples", direction = 1, name = "% Ploidy") + 
+      scale_fill_manual(values = brw_clrs, drop=FALSE, name = "") + 
+      #scale_fill_distiller(type = "div", palette = "PuOr", direction = 1, name = "% Ploidy", 
+      #                     limits = c(-1,1)*max(abs(aneuDat_test4$prop2))) + 
       theme_classic() + 
       coord_fixed() + 
+      #facet_grid(.~ent_yn, switch = "both") + 
       theme(axis.title=element_blank(),
             axis.ticks=element_blank(),
             line = element_blank(),
-            axis.text.x = element_text(angle = 90, hjust = 1))
+            axis.text.x = element_text(angle = 90, hjust = 1)) + 
+      guides(colour = guide_legend(reverse=T))
+      
+      ######
+     # filter(ploidy != "entropy") %>%
+     # ggplot(aes(x=class, y=ploidy, fill=as.numeric(prop))) + 
+     # geom_tile(color="black") + 
+     # geom_text(aes(label = round(prop, 2))) + 
+     # scale_fill_distiller(type = "seq", palette = "Purples", direction = 1, name = "% Ploidy") + 
+     # theme_classic() + 
+     # coord_fixed() + 
+     # theme(axis.title=element_blank(),
+     #       axis.ticks=element_blank(),
+     #       line = element_blank(),
+     #       axis.text.x = element_text(angle = 90, hjust = 1))
   })
   
-  output$entropyPlot <- renderPlot({
-    #aneuDat_test2
-   aneuDat_ploidy_tbl_for_plot() %>% 
-      filter(ploidy == "entropy") %>%
-      ggplot(aes(x=clss, y=ploidy, fill=as.numeric(prop))) + 
-      geom_tile(color="black") + 
-      geom_text(aes(label = round(prop, 2))) + 
-      scale_fill_distiller(type = "seq", palette = 5, direction = 1, name = "Entropy") + 
-      theme_classic() + 
-      coord_fixed() + 
-      theme(axis.title=element_blank(),
-            axis.ticks=element_blank(),
-            line = element_blank(),
-           axis.text.x = element_text(angle = 90, hjust = 1))
-  })
+# output$entropyPlot <- renderPlot({
+#   #aneuDat_test2
+#  aneuDat_ploidy_tbl_for_plot() %>% 
+#     filter(ploidy == "entropy") %>%
+#     ggplot(aes(x=clss, y=ploidy, fill=as.numeric(prop))) + 
+#     geom_tile(color="black") + 
+#     geom_text(aes(label = round(prop, 2))) + 
+#     scale_fill_distiller(type = "seq", palette = 5, direction = 1, name = "Entropy") + 
+#     theme_classic() + 
+#     coord_fixed() + 
+#     theme(axis.title=element_blank(),
+#           axis.ticks=element_blank(),
+#           line = element_blank(),
+#          axis.text.x = element_text(angle = 90, hjust = 1))
+# })
   
 
 
@@ -126,7 +162,10 @@ server <- shinyServer(function(input, output) {
   
   
   output$table <- renderTable({
-    aneuDat_ploidy_tbl()
+    aneuDat_ploidy_tbl_for_plot() %>% 
+      spread(key = clss, value=prop) %>%
+      mutate(ploidy = factor(ploidy, levels=c("diploid", "polyploid", "aneuploid", "entropy"))) %>%
+      arrange(ploidy)#clss, value = prop)
   })
   
   output$gridPlots <- renderUI({
