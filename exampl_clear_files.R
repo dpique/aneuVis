@@ -6,6 +6,10 @@ library(here)
 library(janitor)
 source("scripts/helper_scripts.R")
 
+#can calculate a chromosomal instability index
+
+
+
 ui <- fluidPage(
   useShinyjs(),
   fileInput('inFile', 'Choose file', multiple = TRUE),

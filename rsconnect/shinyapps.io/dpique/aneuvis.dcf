@@ -5,6 +5,6 @@ account: dpique
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 299485
-bundleId: 1268728
+bundleId: 1279673
 url: https://dpique.shinyapps.io/aneuvis/
-when: 1521052241.18852
+when: 1521601575.43036

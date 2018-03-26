@@ -7,6 +7,30 @@ library(janitor)
 library(ggtern)
 source("scripts/helper_scripts.R")
 
+path_list_test <- list.files(path = here(), pattern = ".xlsx")
+tbl_list_test <- lapply(path_list_test, read_xlsx)
+
+maxChr=8
+maxChrPlus1 = maxChr + 1
+aneuDat_test <- map2(.x = path_list_test, .y= tbl_list_test, .f = ~data.frame(clss=.x, .y)) %>% 
+  do.call(rbind, .) %>% 
+  as_tibble() %>% 
+  clean_names() %>%
+  mutate(ploidy =  apply(.[,2:ncol(.)], 1, classifPloidy)) %>% 
+  mutate_at(.vars = vars(starts_with("Chr")), 
+            .funs = ~ifelse(. == 0, 1, 
+                            ifelse(. <= maxChr, ., maxChrPlus1)))
+
+aneuDat_chr_instab_idx <- aneuDat_test %>% 
+  select(-ploidy) %>% gather(key = "chr", value = "numChr", 2:3) %>%
+  select(-chr) %>% group_by(clss) %>%  
+  summarise (n = n()) %>%
+  mutate(freq = n / sum(n))#summarise(n=) 
+  
+ggplot(aneuDat_test2, aes(x=freq, y=as.factor(1))) + 
+  geom_jitter(aes(size=n, color=clss), pch=21, width=0, height=0.05, stroke=1.5) + 
+  theme_classic() + coord_fixed(ratio=0.2) + xlab("Chromosomal Instability Index")
+
 max_plots <- 20 # *maximum* total number of plots
 
 ui <- shinyUI(pageWithSidebar(
