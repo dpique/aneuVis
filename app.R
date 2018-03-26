@@ -9,27 +9,48 @@ source("scripts/helper_scripts.R")
 
 max_plots <- 20 # *maximum* total number of plots
 
-ui <- shinyUI(pageWithSidebar(
-  #shinythemes::themeSelector(),
-  headerPanel("aneuvis v.0.2"),
-  
+ui <- fluidPage(title = "aneuvis", 
+  shinythemes::themeSelector(), 
+  titlePanel("aneuvis v.0.2"),
   sidebarPanel(
-    fileInput(inputId = "files", label = "Upload", multiple = TRUE, accept = c(".xlsx"))
+    radioButtons(inputId = "rb", label = "1. Select data type:",
+                 c("FISH" = "fish",
+                   "SKY" = "sky",
+                   "Single-cell" = "sc")),
+    fileInput(inputId = "files", label = "2. Upload files (for now, only FISH)", multiple = TRUE, accept = c(".xlsx"))
   ),
   
-  mainPanel(
-    tabsetPanel(
-      tabPanel("Grid Plots", uiOutput("gridPlots")), 
-      tabPanel("Table", tableOutput("table")),
-      tabPanel("Ternary Plot", plotOutput("ternPlot")),
-      tabPanel("Entropy Plot", plotOutput("ploidyPlot"))
-    )
-  )
-))
+      mainPanel(
+        conditionalPanel(
+          condition = "input.rb == 'fish'", 
+            tabsetPanel(
+              tabPanel("Grid Plots", uiOutput("gridPlots")), 
+              tabPanel("Table", tableOutput("table")),
+              tabPanel("Ternary Plot", plotOutput("ternPlot")),
+              tabPanel("Entropy Plot", plotOutput("ploidyPlot"))
+          )
+  ), conditionalPanel(condition = "input.rb == 'sky'",
+                      tabsetPanel(
+                        tabPanel("Sky Plots"),
+                        tabPanel("Sky stats")
+                        )
+                    ),
+    conditionalPanel(condition = "input.rb == 'sc'",
+                     tabsetPanel(
+                       tabPanel("Single cell Plots"),
+                       tabPanel("Single cell statistics")
+                     )
+                    )
+              )
+)
+
 
 
 server <- shinyServer(function(input, output) {
   
+  #if
+  #if(input$rb == "fish"){
+   
   aneuDat_r <- reactive({
     validate(need(input$files != "", "aneupl prop..."))
     
@@ -131,13 +152,14 @@ server <- shinyServer(function(input, output) {
     aneuDat_chr_instab_idx <- aneuDat_r() %>% 
       select(-ploidy) %>% gather(key = "chr", value = "numChr", 2:3) %>%
       select(-chr) %>% group_by(clss) %>%  
-      summarise (n = n()) %>%
+      summarise (n = n()/2) %>%
       mutate(freq = n / sum(n)) #%>%
       #data.frame() #%>%
       #t()
    # print(head(aneuDat_r()))
-    #print(dim(aneuDat_chr_instab_idx))
-    #print(aneuDat_chr_instab_idx)
+    print(dim(aneuDat_chr_instab_idx))
+    print(aneuDat_chr_instab_idx)
+    
     aneuDat_chr_instab_idx2 <- aneuDat_r() %>%
       gather(key = "chrom", value= "nchr", 2:3) %>%
       mutate(ideal_nchr = 2) %>%
@@ -155,17 +177,19 @@ server <- shinyServer(function(input, output) {
       spread(key = clss, value=n) %>%
       mutate(ploidy=as.factor("n")) %>%
       select(ploidy, everything())
+    print("head(aneuDat_chr_instab_idx_n):")
+    print(head(aneuDat_chr_instab_idx_n))
       
+    print("aneuDat_ploidy_tbl_for_plot(): ")
+    print(head(aneuDat_ploidy_tbl_for_plot()))
     p <- aneuDat_ploidy_tbl_for_plot() %>% 
       spread(key = clss, value=prop) %>% #chgnd  #  #
       mutate(ploidy = factor(ploidy, levels=c("diploid", "polyploid", "aneuploid", "entropy"))) %>%
       arrange(ploidy) %>%
-      bind_rows(aneuDat_chr_instab_idx_n, aneuDat_chr_instab_idx2)#, aneuDat_chr_instab_idx_freq)#%>% #clss, value = prop)
-      #print(dim(.))
+      bind_rows(aneuDat_chr_instab_idx_n, aneuDat_chr_instab_idx2)
     print("p:")
     print(dim(p))
     print(p)
-    #rbind(t(data.frame(aneuDat_chr_instab_idx))) #data.frame(t(aneuDat_chr_instab_idx)))
     return(p)
   })
   
