@@ -1,5 +1,5 @@
 library(shiny)
-#library(shinyjs) 
+#library(shinyjs)
 library(readxl)
 library(tidyverse)
 library(here)
@@ -9,39 +9,97 @@ source("scripts/helper_scripts.R")
 
 max_plots <- 20 # *maximum* total number of plots
 
-ui <- fluidPage(title = "aneuvis", 
-  shinythemes::themeSelector(), 
+ui <- fluidPage(
+  title = "aneuvis",
+  shinythemes::themeSelector(),
   titlePanel("aneuvis v.0.2"),
   sidebarPanel(
-    radioButtons(inputId = "rb", label = "1. Select data type:",
-                 c("FISH" = "fish",
-                   "SKY" = "sky",
-                   "Single-cell" = "sc")),
-    fileInput(inputId = "files", label = "2. Upload files (for now, only FISH)", multiple = TRUE, accept = c(".xlsx"))
+    radioButtons(
+      inputId = "rb",
+      label = "1. Select data type:",
+      c(
+        "FISH" = "fish",
+        "SKY" = "sky",
+        "Single-cell" = "sc"
+      )
+    ),
+    fileInput(
+      inputId = "files",
+      label = "2. Upload files (for now, only FISH data)",
+      multiple = TRUE,
+      accept = c(".xlsx")
+    )
   ),
   
-      mainPanel(
-        conditionalPanel(
-          condition = "input.rb == 'fish'", 
-            tabsetPanel(
-              tabPanel("Grid Plots", uiOutput("gridPlots")), 
-              tabPanel("Table", tableOutput("table")),
-              tabPanel("Ternary Plot", plotOutput("ternPlot")),
-              tabPanel("Entropy Plot", plotOutput("ploidyPlot"))
-          )
-  ), conditionalPanel(condition = "input.rb == 'sky'",
-                      tabsetPanel(
-                        tabPanel("Sky Plots"),
-                        tabPanel("Sky stats")
-                        )
-                    ),
-    conditionalPanel(condition = "input.rb == 'sc'",
-                     tabsetPanel(
-                       tabPanel("Single cell Plots"),
-                       tabPanel("Single cell statistics")
-                     )
-                    )
+  mainPanel(
+    conditionalPanel(
+      condition = "input.rb == 'fish'",
+      tabsetPanel(
+        tabPanel("Grid Plots", uiOutput("gridPlots")),
+        tabPanel(
+          "Table",
+          tableOutput("table"),
+          p(
+            "Each column in this table represents
+            a different file that was uploaded. The rows represent the following:",
+            
+            tags$ul(
+              tags$li(
+                "The first 3 rows represent
+                the proportion of diploid (2n), polyploid, and aneuploid cells in
+                each sample."
+              ),
+              tags$li(
+                "The 4th row represents entropy, which was calculated
+                using the values in the first 3 rows."
+              ),
+              tags$li(
+                "The 5th row (n) represents the total number of cells analyzed within the file."
+              ),
+              tags$li(
+                "The average number of copy alterations per group (anca_score) was calculated as in",
+                tags$a(target = "_blank", href = "https://www.ncbi.nlm.nih.gov/pubmed/12775914", "Blegen et al 2003")
+              ),
+              tags$li(
+                "The aneuploidy and heterogeneity scores were calculated as in",
+                tags$a(
+                  target = "_blank",
+                  href = "https://www.ncbi.nlm.nih.gov/pubmed/27246460",
+                  "Bakker et al 2016 (Suppl.Methods & Table S2)"
+                )
+              ),
+              tags$li(
+                "The instability index (instab_idx_bayani) was calculated as in",
+                tags$a(
+                  target = "_blank",
+                  href = "https://www.ncbi.nlm.nih.gov/pubmed/18813350",
+                  "Bayani et al 2008"
+                ), "and", tags$a(
+                  target = "_blank",
+                  href = "https://www.ncbi.nlm.nih.gov/pubmed/9121588",
+                  "Langauer et al 1997"
+                ), ". I believe this is equivalent to the anca_score."
               )
+            ),
+      "Also, none of these methods weigh the number of chromosomes/degree of aneuploidy, 
+      which could present an opportunity for developing a new index."
+            )
+      ),
+      tabPanel("Ternary Plot", plotOutput("ternPlot")),
+      tabPanel("Entropy Plot", plotOutput("ploidyPlot"))
+        )
+  ),
+  conditionalPanel(condition = "input.rb == 'sky'",
+                   tabsetPanel(
+                     tabPanel("Sky Plots"),
+                     tabPanel("Sky stats")
+                   )),
+  conditionalPanel(condition = "input.rb == 'sc'",
+                   tabsetPanel(
+                     tabPanel("Single cell plots"),
+                     tabPanel("Single cell statistics")
+                   ))
+    )
 )
 
 
@@ -150,27 +208,82 @@ server <- shinyServer(function(input, output) {
   output$table <- renderTable({
     #03-24-2018
     aneuDat_chr_instab_idx <- aneuDat_r() %>% 
-      select(-ploidy) %>% gather(key = "chr", value = "numChr", 2:3) %>%
-      select(-chr) %>% group_by(clss) %>%  
-      summarise (n = n()/2) %>%
-      mutate(freq = n / sum(n)) #%>%
-      #data.frame() #%>%
-      #t()
-   # print(head(aneuDat_r()))
+    #aneuDat_chr_instab_idx <- aneuDat_test %>% 
+      select(-ploidy) %>% 
+      gather(key = "chr", value = "numChr", 2:3) %>%
+      group_by(clss) %>% 
+      summarise (n = n()/length(unique(chr))) %>%
+      mutate(freq = n / sum(n))
+    
+    print(head(aneuDat_r()))
     print(dim(aneuDat_chr_instab_idx))
     print(aneuDat_chr_instab_idx)
     
-    aneuDat_chr_instab_idx2 <- aneuDat_r() %>%
-      gather(key = "chrom", value= "nchr", 2:3) %>%
+    #aneuploidy_score_bakker <- aneuDat_test %>%
+    aneuploidy_score_bakker <- aneuDat_r() %>%
+      gather(key = "bins", value= "nchr", 2:3) %>%
       mutate(ideal_nchr = 2) %>%
       mutate(ideal_obs_diff = abs(ideal_nchr - nchr)) %>%
       group_by(clss) %>% 
-      summarize(norm_sum_ideal_obs_diff = sum(ideal_obs_diff) / sum(nchr)) %>%
-      spread(key = clss, value=norm_sum_ideal_obs_diff) %>%
-      mutate(ploidy=as.factor("norm_sum_ideal_obs_diff")) %>%
+      summarize(aneupl_score_bakker = sum(ideal_obs_diff) / (length(unique(bins))*sum(nchr))) %>% 
+       spread(key = clss, value=aneupl_score_bakker) %>%
+      mutate(ploidy=as.factor("aneupl_score_bakker")) %>%
       select(ploidy, everything())
-    print(aneuDat_chr_instab_idx2)
+    print(aneuploidy_score_bakker)
 
+    #heterogeneity_score_bakker <- aneuDat_test %>% 
+    heterogeneity_score_bakker <- aneuDat_r() %>%
+      select(-ploidy) %>% 
+      gather(key = "bins", value = "numChr", 2:3) %>%
+      mutate(numChrFromEupl = numChr - 2) %>%
+      group_by(clss, bins, numChr) %>%
+      summarize(mft=n()) %>% 
+      arrange(clss, bins, numChr, mft) %>%
+      ungroup() %>%
+      group_by(clss, bins) %>%
+      mutate(f = 1:n()-1) %>%
+      mutate(mft_f = mft * f) %>%
+      ungroup() %>%
+      group_by(clss) %>%
+      summarize(heterog_score_bakker = sum(mft_f)/ (sum(mft)*length(unique(bins)))) %>%
+      spread(key = clss, value=heterog_score_bakker) %>%
+      mutate(ploidy=as.factor("heterog_score_bakker")) %>%
+      select(ploidy, everything())
+    print(heterogeneity_score_bakker)
+    
+    #instability_idx_bayani <-  aneuDat_test %>% 
+    instability_idx_bayani <- aneuDat_r() %>%
+      select(-ploidy) %>% 
+      gather(key = "bins", value = "numChr", 2:3) %>%
+      mutate(isDipl = numChr == 2) %>%
+      group_by(clss, bins, isDipl) %>%
+      count() %>%
+      spread(key = isDipl, value = n) %>%
+      clean_names() %>%
+      mutate(instab_idx_bayani = false / (false + true)) %>% #per probe
+      group_by(clss) %>%
+      summarise(instab_idx_bayani = mean(instab_idx_bayani)) %>% #now average
+      spread(key = clss, value=instab_idx_bayani) %>%
+      mutate(ploidy=as.factor("instab_idx_bayani")) %>%
+      select(ploidy, everything())
+    
+    anca_idx <- aneuDat_r() %>%
+    #anca_idx <- aneuDat_test %>% 
+      select(-ploidy) %>% 
+      gather(key = "chrom", value= "nchr", 2:3) %>%
+      mutate(diploid_bin = nchr == 2) %>%
+      group_by(clss, diploid_bin) %>% 
+      summarise (n = n()) %>%
+      spread(key = diploid_bin, value=n) %>%
+      clean_names() %>%
+      mutate(anca_score_blegen = false/ (true + false)) %>% 
+      select(clss, anca_score_blegen) %>%
+      spread(key = clss, value=anca_score_blegen) %>%
+      mutate(ploidy=as.factor("anca_score_blegen")) %>%
+      select(ploidy, everything())
+    
+    print("anca indx:")
+    print(head(anca_idx))
     
     aneuDat_chr_instab_idx_n <- aneuDat_chr_instab_idx %>%
       select(-freq) %>%
@@ -179,14 +292,15 @@ server <- shinyServer(function(input, output) {
       select(ploidy, everything())
     print("head(aneuDat_chr_instab_idx_n):")
     print(head(aneuDat_chr_instab_idx_n))
+    
       
-    print("aneuDat_ploidy_tbl_for_plot(): ")
-    print(head(aneuDat_ploidy_tbl_for_plot()))
+    #print("aneuDat_ploidy_tbl_for_plot(): ")
+    #print(head(aneuDat_ploidy_tbl_for_plot()))
     p <- aneuDat_ploidy_tbl_for_plot() %>% 
       spread(key = clss, value=prop) %>% #chgnd  #  #
       mutate(ploidy = factor(ploidy, levels=c("diploid", "polyploid", "aneuploid", "entropy"))) %>%
       arrange(ploidy) %>%
-      bind_rows(aneuDat_chr_instab_idx_n, aneuDat_chr_instab_idx2)
+      bind_rows(aneuDat_chr_instab_idx_n, anca_idx, heterogeneity_score_bakker, aneuploidy_score_bakker, instability_idx_bayani)
     print("p:")
     print(dim(p))
     print(p)
@@ -199,7 +313,7 @@ server <- shinyServer(function(input, output) {
       plotname <- paste("plot", i, sep="")
       plotOutput(plotname, height = 450, width = 450)
     })
-    
+  
     do.call(tagList, plot_output_list)
   })
   
