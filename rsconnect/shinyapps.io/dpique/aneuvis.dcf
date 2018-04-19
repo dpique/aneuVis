@@ -5,6 +5,9 @@ account: dpique
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 299485
-bundleId: 1279673
+bundleId: 1320101
 url: https://dpique.shinyapps.io/aneuvis/
-when: 1521601575.43036
+when: 1523841614.09671
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: exampl_clear_files.R|exampl_multip_plots.R|fish_test_dat.zip|shiny_resources|sky_data_analysis.Rmd|testDat.rds|testDat.zip|data/A.Hidalgo_1.xml|scripts/test_scripts|testDat/test_aneupl_file_2.xlsx|testDat/test_aneupl_file_3.xlsx|testDat/test_aneupl_file_4.xlsx|testDat/test_aneupl_file.xlsx
