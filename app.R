@@ -11,16 +11,19 @@ max_plots <- 20 # *maximum* total number of plots
 
 ui <- fluidPage(
   title = "aneuvis",
-  shinythemes::themeSelector(),
-  titlePanel("aneuvis v.0.2"),
+  #shinythemes::themeSelector(),
+  theme = shinythemes::shinytheme("spacelab"),
+  titlePanel("aneuvis v.0.3"),
   sidebarPanel(
     radioButtons(
       inputId = "rb",
       label = "1. Select data type:",
       c(
-        "FISH" = "fish",
-        "SKY" = "sky",
-        "Single-cell" = "sc"
+        "2-chromosome FISH" = "fish",
+        "3-chromosome FISH" = "fish3",
+        "4-chromosome FISH" = "fish4",
+        "Ginkgo: Single-cell CNV" = "sc",
+        "SKY" = "sky"
       )
     ),
     fileInput(
@@ -28,7 +31,10 @@ ui <- fluidPage(
       label = "2. Upload files (for now, only FISH data)",
       multiple = TRUE,
       accept = c(".xlsx")
-    )
+    ),
+    #textInput("")
+    p("Download example 2-chromosome FISH data ", tags$a(target = "_blank", 
+href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxaigjiFmba", "here"), " (zip file)")
   ),
   
   mainPanel(
@@ -98,6 +104,16 @@ ui <- fluidPage(
                    tabsetPanel(
                      tabPanel("Single cell plots"),
                      tabPanel("Single cell statistics")
+                   )),
+  conditionalPanel(condition = "input.rb == 'fish3'",
+                   tabsetPanel(
+                     tabPanel("3 chromosome FISH plots"),
+                     tabPanel("3 chromosome FISH statistics")
+                   )),
+  conditionalPanel(condition = "input.rb == 'fish4'",
+                   tabsetPanel(
+                     tabPanel("4 chromosome FISH plots"),
+                     tabPanel("3 chromosome FISH statistics")
                    ))
     )
 )
@@ -110,7 +126,7 @@ server <- shinyServer(function(input, output) {
   #if(input$rb == "fish"){
    
   aneuDat_r <- reactive({
-    validate(need(input$files != "", "aneupl prop..."))
+    validate(need(input$files != "", "..."))
     
     if (is.null(input$files)) {
       return(NULL)
