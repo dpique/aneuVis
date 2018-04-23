@@ -13,13 +13,13 @@ ui <- fluidPage(
   title = "aneuvis",
   #shinythemes::themeSelector(),
   theme = shinythemes::shinytheme("spacelab"),
-  titlePanel("aneuvis v.0.3"),
+  titlePanel("aneuvis v.0.4"),
   sidebarPanel(
     radioButtons(
       inputId = "rb",
       label = "1. Select data type:",
       c(
-        "2-chromosome FISH" = "fish",
+        "2-chromosome FISH" = "fish2",
         "3-chromosome FISH" = "fish3",
         "4-chromosome FISH" = "fish4",
         "Ginkgo: Single-cell CNV" = "sc",
@@ -39,7 +39,7 @@ href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxai
   
   mainPanel(
     conditionalPanel(
-      condition = "input.rb == 'fish'",
+      condition = "input.rb == 'fish2'",
       tabsetPanel(
         tabPanel("Grid Plots", uiOutput("gridPlots")),
         tabPanel(
@@ -113,7 +113,7 @@ href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxai
   conditionalPanel(condition = "input.rb == 'fish4'",
                    tabsetPanel(
                      tabPanel("4 chromosome FISH plots"),
-                     tabPanel("3 chromosome FISH statistics")
+                     tabPanel("4 chromosome FISH statistics")
                    ))
     )
 )
@@ -123,7 +123,7 @@ href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxai
 server <- shinyServer(function(input, output) {
   
   #if
-  #if(input$rb == "fish"){
+  #if(input$rb == "fish2"){
    
   aneuDat_r <- reactive({
     validate(need(input$files != "", "..."))
