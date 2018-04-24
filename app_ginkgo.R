@@ -1,3 +1,4 @@
+#app_ginkgo
 library(shiny)
 #library(shinyjs)
 library(readxl)
@@ -11,11 +12,11 @@ source("scripts/helper_scripts.R")
 
 
 tabPanelFishMaster <- function(x){
- # tabsetPanel(
- #   tabPanel("Single cell plots"),
- #   tabPanel("Single cell statistics"),
- #   tabPanel("function_test panel")
- # )
+  # tabsetPanel(
+  #   tabPanel("Single cell plots"),
+  #   tabPanel("Single cell statistics"),
+  #   tabPanel("function_test panel")
+  # )
   tabsetPanel(
     tabPanel("Grid Plots", uiOutput("gridPlots")),
     tabPanel(
@@ -64,9 +65,9 @@ tabPanelFishMaster <- function(x){
           )
           ),
         "Also, none of these methods weigh the number of chromosomes/degree of aneuploidy, 
-      which could present an opportunity for developing a new index."
+        which could present an opportunity for developing a new index."
       )
-    ),
+      ),
     tabPanel("Ternary Plot", plotOutput("ternPlot")),
     tabPanel("Entropy Plot", plotOutput("ploidyPlot")))
 }
@@ -100,30 +101,30 @@ ui <- fluidPage(
     #submitButton("Submit"),
     #textInput("")
     p("Download example 2-chromosome FISH data ", tags$a(target = "_blank", 
-href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxaigjiFmba", "here"), " (zip file)")
+                                                         href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxaigjiFmba", "here"), " (zip file)")
   ),
   
   mainPanel(
     conditionalPanel(condition = "input.rb == 'fish2'",
                      tabPanelFishMaster()),
     conditionalPanel(condition = "input.rb == 'sky'",
-                    tabsetPanel(
-                     tabPanel("Sky Plots"),
-                     tabPanel("Sky stats")
-                   )),
+                     tabsetPanel(
+                       tabPanel("Sky Plots"),
+                       tabPanel("Sky stats")
+                     )),
     conditionalPanel(condition = "input.rb == 'ginkgo'",
                      tabsetPanel(
                        tabPanel("Grid plot",
                                 uiOutput("gridPlots_ginkgo"),
                                 plotOutput("ginkgo_plot")),
-                                #plotOutput("plot_test")),
-                        tabPanel("Summary statistics",
-                         tableOutput("gingko_table"))
+                       #plotOutput("plot_test")),
+                       tabPanel("Summary statistics",
+                                tableOutput("gingko_table"))
                        #tabPanel("Ternary Plot", plotOutput("ternPlot")),
                        #tabPanel("Entropy Plot", plotOutput("ploidyPlot")))
                      ))
     
-    )
+  )
 )
 
 
@@ -138,7 +139,7 @@ server <- shinyServer(function(input, output) {
       return(NULL)
     }
     if(tools::file_ext(input$files$datapath[1]) %in% c("txt")){
-
+      
       maxChr = 8
       maxChrPlus1 = maxChr + 1
       
@@ -147,71 +148,37 @@ server <- shinyServer(function(input, output) {
       tbl_list <- lapply(input$files$datapath, read_delim, delim="\t")
       
       g <- map2(.x = input$files$name, .y= tbl_list,
-                      .f = ~data.frame(clss=.x, .y)) %>% 
+                .f = ~data.frame(clss=.x, .y)) %>% 
         do.call(rbind, .) %>% 
         as_tibble() %>% 
         clean_names() #%>%
-        # mutate(variable_ =  apply(.[,2:ncol(.)], 1, classifPloidy)) %>% 
-        # mutate_at(.vars = vars(starts_with("Chr")), 
-        #           .funs = ~ifelse(. == 0, 1, 
-        #                           ifelse(. <= maxChr, ., maxChrPlus1)))
+      # mutate(variable_ =  apply(.[,2:ncol(.)], 1, classifPloidy)) %>% 
+      # mutate_at(.vars = vars(starts_with("Chr")), 
+      #           .funs = ~ifelse(. == 0, 1, 
+      #                           ifelse(. <= maxChr, ., maxChrPlus1)))
       print(head(g))
       return(g)
     }
   })
   
   output$gingko_table <- renderTable({
-    #ginkgo_dat()[1:5, 1:5]
-    gk_sumry_tbl <- ginkgo_dat() %>% 
-      #gnk %>% 
-      gather(key = smpl, value=cp_nm, 5:ncol(.)) %>% 
-      mutate(cp_nm = as.numeric(cp_nm)) %>%
-      mutate(isDipl = cp_nm == 2) %>%
-      unite(col = "bins", chr, start, end, remove = FALSE) %>%
-      #mutate(bins = uni)
-      group_by(clss, bins, isDipl) %>%
-      count() %>%
-      spread(key = isDipl, value = n) %>%
-      clean_names() %>%
-      mutate(instab_idx_bayani = false / (false + true)) %>%
-      group_by(clss) #%>%
-      #summarise(instab_idx_bayani = mean(instab_idx_bayani))# %>% #now average
-      #spread(key = clss, value=instab_idx_bayani) %>%
-      #mutate(variable_=as.factor("instab_idx_bayani")) %>%
-      #select(variable_, everything())
-    return(head(gk_sumry_tbl))
-    
-    gk_tbl <- ginkgo_dat() %>% 
-      select(-variable_) %>% 
-      gather(key = "bins", value = "numChr", 2:ncol(.)) %>%
-      mutate(isDipl = numChr == 2) %>%
-      group_by(clss, bins, isDipl) %>%
-      count() %>%
-      spread(key = isDipl, value = n) %>%
-      clean_names() %>%
-      mutate(instab_idx_bayani = false / (false + true)) %>% #per probe
-      group_by(clss) %>%
-      summarise(instab_idx_bayani = mean(instab_idx_bayani)) %>% #now average
-      spread(key = clss, value=instab_idx_bayani) %>%
-      mutate(variable_=as.factor("instab_idx_bayani")) %>%
-      select(variable_, everything())
-    return(gk_tbl)
+    ginkgo_dat()[1:5, 1:5]
   })
   
   output$ginkgo_plot <- renderPlot({
     gnk_dt <- ginkgo_dat() %>% 
-        #gnk %>% 
-        gather(key = smpl, value=cp_nm, 5:ncol(.)) %>% 
-        mutate(cp_nm = as.numeric(cp_nm)) %>%
-        group_by(chr, smpl) %>% 
-        summarise(avg = mean(cp_nm)) %>% 
-        mutate(avgRound = round(avg)) %>%
-        mutate(avgRound = ifelse(avgRound > 2, 1, ifelse(avgRound == 2, 0, -1))) #%>%
+      #gnk %>% 
+      gather(key = smpl, value=cp_nm, 5:ncol(.)) %>% 
+      mutate(cp_nm = as.numeric(cp_nm)) %>%
+      group_by(chr, smpl) %>% 
+      summarise(avg = mean(cp_nm)) %>% 
+      mutate(avgRound = round(avg)) %>%
+      mutate(avgRound = ifelse(avgRound > 2, 1, ifelse(avgRound == 2, 0, -1))) #%>%
     print("gnk_dt: ")
     head(gnk_dt)
     
     p <- ggplot(filter(gnk_dt, chr %in% paste0("chr", c(1:22,"X"))), 
-           aes(x=chr, y=smpl, fill=factor(avgRound))) + 
+                aes(x=chr, y=smpl, fill=factor(avgRound))) + 
       geom_tile(color = "white", size = 1) + 
       scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
       theme_classic() + theme(axis.ticks = element_blank(),
@@ -222,13 +189,13 @@ server <- shinyServer(function(input, output) {
     
     #return(multiplot(list(plotOutput(p), plotOutput(p), plotOutput(p))))
     return(p)
-        #separate(chr, c("chrRm", "chr"), sep=3) %>% 
-        #dplyr::select(-chrRm) %>% 
-        #filter(chr != "Y") %>% 
-        #mutate(chr = factor(chr, levels=c(1:22, "X")), 
-        #       avgRound=factor(avgRound)) %>%
-        #left_join(pldyk3, by = "smpl") %>%
-        #left_join(gkStats, by = "smpl")
+    #separate(chr, c("chrRm", "chr"), sep=3) %>% 
+    #dplyr::select(-chrRm) %>% 
+    #filter(chr != "Y") %>% 
+    #mutate(chr = factor(chr, levels=c(1:22, "X")), 
+    #       avgRound=factor(avgRound)) %>%
+    #left_join(pldyk3, by = "smpl") %>%
+    #left_join(gkStats, by = "smpl")
   })
   
   output$ginkgo_plot_reactive <- reactive({
@@ -288,14 +255,14 @@ server <- shinyServer(function(input, output) {
       plotname <- paste("plot_gnk", my_i, sep="")
       
       output[[plotname]] <- renderPlot(ginkgo_plot_reactive()) #renderPlot({
-       #cls <- classes()[my_i]
-       #maxChr = 8
-       #maxChrPlus1 = maxChr + 1
-       #matr_plot <- return_chr_prop_matr(aneuDat_r(),cls, maxPair = maxChrPlus1)
-       #plt <- create_perc_matr2(matr_plot, title = file_names()[my_i], minChr = 1, 
-       #                         maxChr = maxChrPlus1, xlab = "", ylab="")
-       #return(plt)
-        
+      #cls <- classes()[my_i]
+      #maxChr = 8
+      #maxChrPlus1 = maxChr + 1
+      #matr_plot <- return_chr_prop_matr(aneuDat_r(),cls, maxPair = maxChrPlus1)
+      #plt <- create_perc_matr2(matr_plot, title = file_names()[my_i], minChr = 1, 
+      #                         maxChr = maxChrPlus1, xlab = "", ylab="")
+      #return(plt)
+      
       #})
     })
   }
@@ -305,13 +272,13 @@ server <- shinyServer(function(input, output) {
   
   
   
-   #  output$plot_test <- renderPlot({
-   #    plot_output_list <- sapply(1:length(plots), function(i) {
-   #      plotname <- paste("plot", i , sep="")
-   #      plotOutput(plotname, height = 280, width = 250)
-   #    })
-   #    multiplot(plot_output_list)
-   #  })
+  #  output$plot_test <- renderPlot({
+  #    plot_output_list <- sapply(1:length(plots), function(i) {
+  #      plotname <- paste("plot", i , sep="")
+  #      plotOutput(plotname, height = 280, width = 250)
+  #    })
+  #    multiplot(plot_output_list)
+  #  })
   
   #################
   #if
@@ -328,7 +295,7 @@ server <- shinyServer(function(input, output) {
       return(NULL)
     }
     if(tools::file_ext(input$files$datapath[1]) %in% c("xlsx", "xls")){
-    #else {
+      #else {
       
       maxChr = 8
       maxChrPlus1 = maxChr + 1
@@ -345,7 +312,7 @@ server <- shinyServer(function(input, output) {
         mutate(variable_ =  apply(.[,2:ncol(.)], 1, classifPloidy)) %>% 
         mutate_at(.vars = vars(starts_with("Chr")), 
                   .funs = ~ifelse(. == 0, 1, 
-                                   ifelse(. <= maxChr, ., maxChrPlus1)))
+                                  ifelse(. <= maxChr, ., maxChrPlus1)))
       print(head(aneuDat))
       return(aneuDat)
     }
@@ -377,11 +344,11 @@ server <- shinyServer(function(input, output) {
       dplyr::mutate(entropy=purrr::pmap_dbl(.[,-1], ~entropy::entropy(c(...)))) %>%
       gather(key = "variable_", value = "prop", 2:5) %>%
       mutate(variable_ = factor(variable_, 
-                             levels = rev(c("diploid", "polyploid", "aneuploid", "entropy"))))
+                                levels = rev(c("diploid", "polyploid", "aneuploid", "entropy"))))
   })
   
   output$ploidyPlot <- renderPlot({
-
+    
     brw_clrs <- c(rev(RColorBrewer::brewer.pal(n = 8, name = "Purples")), "#ffffff",
                   RColorBrewer::brewer.pal(n = 8, name = "Oranges"))
     
@@ -403,7 +370,7 @@ server <- shinyServer(function(input, output) {
             line = element_blank(),
             axis.text.x = element_text(angle = 90, hjust = 1)) + 
       guides(colour = guide_legend(reverse=T))
-
+    
   })
   
   
@@ -426,7 +393,7 @@ server <- shinyServer(function(input, output) {
   output$table <- renderTable({
     #03-24-2018
     aneuDat_chr_instab_idx <- aneuDat_r() %>% 
-    #aneuDat_chr_instab_idx <- aneuDat_test %>% 
+      #aneuDat_chr_instab_idx <- aneuDat_test %>% 
       select(-variable_) %>% 
       gather(key = "chr", value = "numChr", 2:3) %>%
       group_by(clss) %>% 
@@ -444,11 +411,11 @@ server <- shinyServer(function(input, output) {
       mutate(ideal_obs_diff = abs(ideal_nchr - nchr)) %>%
       group_by(clss) %>% 
       summarize(aneupl_score_bakker = sum(ideal_obs_diff) / (length(unique(bins))*sum(nchr))) %>% 
-       spread(key = clss, value=aneupl_score_bakker) %>%
+      spread(key = clss, value=aneupl_score_bakker) %>%
       mutate(variable_=as.factor("aneupl_score_bakker")) %>%
       select(variable_, everything())
     print(aneuploidy_score_bakker)
-
+    
     #heterogeneity_score_bakker <- aneuDat_test %>% 
     heterogeneity_score_bakker <- aneuDat_r() %>%
       select(-variable_) %>% 
@@ -486,7 +453,7 @@ server <- shinyServer(function(input, output) {
       select(variable_, everything())
     
     anca_idx <- aneuDat_r() %>%
-    #anca_idx <- aneuDat_test %>% 
+      #anca_idx <- aneuDat_test %>% 
       select(-variable_) %>% 
       gather(key = "chrom", value= "nchr", 2:3) %>%
       mutate(diploid_bin = nchr == 2) %>%
@@ -511,7 +478,7 @@ server <- shinyServer(function(input, output) {
     print("head(aneuDat_chr_instab_idx_n):")
     print(head(aneuDat_chr_instab_idx_n))
     
-      
+    
     #print("aneuDat_ploidy_tbl_for_plot(): ")
     #print(head(aneuDat_ploidy_tbl_for_plot()))
     p <- aneuDat_ploidy_tbl_for_plot() %>% 
