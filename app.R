@@ -8,7 +8,7 @@ library(ggtern)
 library(grid)
 
 source("scripts/helper_scripts.R")
-
+#LOCALTEST = FALSE
 
 tabPanelFishMaster <- function(x){
  # tabsetPanel(
@@ -97,10 +97,26 @@ ui <- fluidPage(
       multiple = TRUE,
       accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv")
     ),
+    fileInput(
+      inputId = "gnk_key",
+      label = "Upload Ginkgo Key (xls or xlsx)", #names must match those in gnko
+      multiple = FALSE,
+      accept = c(".xlsx", ".xls")#, ".csv", ".txt", ".tsv")
+    ),
+    actionButton("submit", "Submit"),
     #submitButton("Submit"),
     #textInput("")
-    p("Download example 2-chromosome FISH data ", tags$a(target = "_blank", 
-href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxaigjiFmba", "here"), " (zip file)")
+    p("Download example 2-chromosome FISH data ", 
+      tags$a(target = "_blank", 
+             href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxaigjiFmba", "here"), 
+      " (zip file)"),
+    p("Download example Ginkgo data", 
+      tags$a(target = "_blank", 
+             href="http://qb.cshl.edu/ginkgo/uploads/_t10breast_navin/SegCopy?uniq=1210441", "here"), 
+      "(save as '.txt' file)"),
+    p("Download Ginkgo key here", 
+      tags$a(target = "_blank",
+             href="https://docs.google.com/uc?export=download&id=1bhOEye8FR3Ut9w_hT-SMab2AaUEx9_5x", "here"))
   ),
   
   mainPanel(
@@ -113,12 +129,22 @@ href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxai
                    )),
     conditionalPanel(condition = "input.rb == 'ginkgo'",
                      tabsetPanel(
-                       tabPanel("Grid plot",
-                                uiOutput("gridPlots_ginkgo"),
-                                plotOutput("ginkgo_plot")),
+                       tabPanel("Chromosomal Copy Number Heat Map",
+                                #uiOutput("gridPlots_ginkgo"),
+                                plotOutput("g5P")),
+                       tabPanel("Sample x Chromosome Summary Table", 
+                                p("The table below gives the weighted average copy number per chromosome per sample.
+                                  The table is also available for download."),
+                                downloadButton("g2T.d", "Download"),
+                                tableOutput("g2T"))
                                 #plotOutput("plot_test")),
-                        tabPanel("Summary statistics",
-                         tableOutput("gingko_table"))
+                       # tabPanel("Summary statistics",
+                       #  p("ginkgo_table:"),
+                       #  tableOutput("ginkgo_table_out"),
+                       #  p("ginkgo key:"),
+                       #  tableOutput("gink_key"),
+                       #  p("ginkgo_freq_tbl:"),
+                       #  tableOutput("ginkgo_freq_tbl"))
                        #tabPanel("Ternary Plot", plotOutput("ternPlot")),
                        #tabPanel("Entropy Plot", plotOutput("ploidyPlot")))
                      ))
@@ -130,8 +156,10 @@ href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxai
 
 server <- shinyServer(function(input, output) {
   ###########
-  #ginkgo data
-  ginkgo_dat <- reactive({
+  #1. Read in raw ginkgo data
+  
+  #gR <- reactive({
+   gR <- eventReactive(input$submit, { #var. named with capital R for Reactive
     validate(need(input$files != "", "..."))
     
     if (is.null(input$files)) {
@@ -143,183 +171,234 @@ server <- shinyServer(function(input, output) {
       maxChrPlus1 = maxChr + 1
       
       path_list <- as.list(input$files$datapath)
+      if(interactive()){
+        path_list <- as.list( here::here("testDat/ginkgo_test_dat_copy_number.txt"))
+      }
       #fileinput: 'name', 'size', 'type' and 'datapath'.
-      tbl_list <- lapply(input$files$datapath, read_delim, delim="\t")
+      tbl_list <- lapply(path_list, read_delim, delim="\t")
       
-      g <- map2(.x = input$files$name, .y= tbl_list,
+      g <- map2(.x = path_list, .y= tbl_list,
                       .f = ~data.frame(clss=.x, .y)) %>% 
         do.call(rbind, .) %>% 
         as_tibble() %>% 
-        clean_names() #%>%
-        # mutate(variable_ =  apply(.[,2:ncol(.)], 1, classifPloidy)) %>% 
-        # mutate_at(.vars = vars(starts_with("Chr")), 
-        #           .funs = ~ifelse(. == 0, 1, 
-        #                           ifelse(. <= maxChr, ., maxChrPlus1)))
-      print(head(g))
+        .[,colSums(!is.na(.)) > 0] %>%
+        select(-clss)
+
+      #print(head(g))
       return(g)
     }
   })
-  
-  output$gingko_table <- renderTable({
-    #ginkgo_dat()[1:5, 1:5]
-    gk_sumry_tbl <- ginkgo_dat() %>% 
-      #gnk %>% 
-      gather(key = smpl, value=cp_nm, 5:ncol(.)) %>% 
-      mutate(cp_nm = as.numeric(cp_nm)) %>%
-      mutate(isDipl = cp_nm == 2) %>%
-      unite(col = "bins", chr, start, end, remove = FALSE) %>%
-      #mutate(bins = uni)
-      group_by(clss, bins, isDipl) %>%
-      count() %>%
-      spread(key = isDipl, value = n) %>%
-      clean_names() %>%
-      mutate(instab_idx_bayani = false / (false + true)) %>%
-      group_by(clss) #%>%
-      #summarise(instab_idx_bayani = mean(instab_idx_bayani))# %>% #now average
-      #spread(key = clss, value=instab_idx_bayani) %>%
-      #mutate(variable_=as.factor("instab_idx_bayani")) %>%
-      #select(variable_, everything())
-    return(head(gk_sumry_tbl))
-    
-    gk_tbl <- ginkgo_dat() %>% 
-      select(-variable_) %>% 
-      gather(key = "bins", value = "numChr", 2:ncol(.)) %>%
-      mutate(isDipl = numChr == 2) %>%
-      group_by(clss, bins, isDipl) %>%
-      count() %>%
-      spread(key = isDipl, value = n) %>%
-      clean_names() %>%
-      mutate(instab_idx_bayani = false / (false + true)) %>% #per probe
-      group_by(clss) %>%
-      summarise(instab_idx_bayani = mean(instab_idx_bayani)) %>% #now average
-      spread(key = clss, value=instab_idx_bayani) %>%
-      mutate(variable_=as.factor("instab_idx_bayani")) %>%
-      select(variable_, everything())
-    return(gk_tbl)
-  })
-  
-  output$ginkgo_plot <- renderPlot({
-    gnk_dt <- ginkgo_dat() %>% 
-        #gnk %>% 
-        gather(key = smpl, value=cp_nm, 5:ncol(.)) %>% 
-        mutate(cp_nm = as.numeric(cp_nm)) %>%
-        group_by(chr, smpl) %>% 
-        summarise(avg = mean(cp_nm)) %>% 
-        mutate(avgRound = round(avg)) %>%
-        mutate(avgRound = ifelse(avgRound > 2, 1, ifelse(avgRound == 2, 0, -1))) #%>%
-    print("gnk_dt: ")
-    head(gnk_dt)
-    
-    p <- ggplot(filter(gnk_dt, chr %in% paste0("chr", c(1:22,"X"))), 
-           aes(x=chr, y=smpl, fill=factor(avgRound))) + 
-      geom_tile(color = "white", size = 1) + 
-      scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(size= 8),
-                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      coord_fixed(ratio = 1) + xlab("Chromosome") + ylab("")
-    
-    #return(multiplot(list(plotOutput(p), plotOutput(p), plotOutput(p))))
-    return(p)
-        #separate(chr, c("chrRm", "chr"), sep=3) %>% 
-        #dplyr::select(-chrRm) %>% 
-        #filter(chr != "Y") %>% 
-        #mutate(chr = factor(chr, levels=c(1:22, "X")), 
-        #       avgRound=factor(avgRound)) %>%
-        #left_join(pldyk3, by = "smpl") %>%
-        #left_join(gkStats, by = "smpl")
-  })
-  
-  output$ginkgo_plot_reactive <- reactive({
-    gnk_dt <- ginkgo_dat() %>% 
-      #gnk %>% 
-      gather(key = smpl, value=cp_nm, 5:ncol(.)) %>% 
-      mutate(cp_nm = as.numeric(cp_nm)) %>%
-      group_by(chr, smpl) %>% 
-      summarise(avg = mean(cp_nm)) %>% 
+
+   #2. read in the ginkgo key 
+   
+   gKR <- reactive({#eventReactive(input$submit, { #g for ginkgo K for Key, R for reactive
+     validate(need(input$gnk_key != "", "..."))
+     
+     if (is.null(input$gnk_key)) {
+       return(NULL)
+     }
+     gK <- read_xlsx(path = input$gnk_key$datapath[1], sheet = 1)
+     
+     if(LOCALTEST == TRUE){
+       gK <- read_xlsx(path = here::here("testDat/ginkgo_key.xlsx"), sheet = 1) #%>%
+     }
+     
+     print("head(gk):")
+     print(head(gK))
+     return(gK)
+   })
+   
+   
+  g2R <- reactive({
+    g2 <- g %>% 
+      gather(key = smpl, value=cp_nm, 4:ncol(.)) %>% 
+      group_by(CHR, smpl) %>% 
+      mutate(reg_size = END - START) %>% 
+      summarise(avg = weighted.mean(cp_nm,reg_size)) %>% 
       mutate(avgRound = round(avg)) %>%
-      mutate(avgRound = ifelse(avgRound > 2, 1, ifelse(avgRound == 2, 0, -1))) #%>%
-    print("gnk_dt: ")
-    head(gnk_dt)
+      mutate(avgRound = ifelse(avgRound > 2, 1, ifelse(avgRound == 2, 0, -1))) %>%
+      separate(CHR, c("chrRm", "chr"), sep=3) %>% 
+      dplyr::select(-chrRm) %>% 
+      filter(chr != "Y") %>% 
+      mutate(chr = factor(chr, levels=c(1:22, "X")), 
+             avgRound=factor(avgRound)) %>%
+      left_join(key_xl, c("smpl" = "file_name"))
+    return(g2)
+  })
+   
+  g2.1R <- reactive({
+    g2.t <- g2 %>% select(-avgRound) %>%
+      spread(key = chr, value = avg)
+    return(g2.t)
+  })
+  
+  output$g2T <- renderTable({
+    g2.1R()
+    })
+  
+  output$g2T.d <- downloadHandler(
+    filename = function() {
+      paste("ginkgo-chr-summary-",Sys.Date(), ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv(g2.1R(), file, row.names = FALSE)
+    }
+  )
+  
+  
+  output$g2P <- renderPlot({
+    g2.p <- g2 %>%
+      select(chr, avgRound, category) %>%
+      group_by(chr, avgRound, category) %>%
+      summarise (n = n()) %>%
+      mutate(freq = n / sum(n)) %>% 
+      spread(key = avgRound, value = freq)
     
-    p <- ggplot(filter(gnk_dt, chr %in% paste0("chr", c(1:22,"X"))), 
-                aes(x=chr, y=smpl, fill=factor(avgRound))) + 
+    g2.p <- g2 %>%
+      select(chr, avgRound, category) %>%
+      group_by(chr, avgRound, category) %>%
+      summarise (n = n()) %>%
+      ungroup() %>%
+      group_by(category, chr) %>%
+      mutate(freq = n / sum(n)) %>% 
+      mutate(freq_dir = freq*as.numeric(as.character(avgRound))) %>%
+      arrange(chr, category, avgRound)
+      #spread(key = avgRound, value = freq)
+    ggplot(g2.p, aes(x=avgRound,y = freq, color=chr)) + 
+      geom_jitter(alpha=0.5) + 
+      geom_line(aes(group=chr))# , color=category))
+    ggplot(g2.p, aes(y=avgRound,x = freq)) + 
+      geom_jitter(alpha=0.5, aes(color=chr)) + 
+      geom_line(aes(group=chr, color=category))# , color=category))
+    
+    
+  })
+  
+  g3R <- reactive({
+    g3 <- g2R %>%
+      dplyr::select(avgRound, chr, category, smpl) %>%
+      spread(chr, avgRound)
+    return(g3)
+  })
+    
+  g4R <- reactive({
+    g4 <- g3 %>% 
+      group_by(category)  %>%
+      unite(colPaste, -category, -smpl, remove = FALSE) %>%
+      count(colPaste) %>%
+      mutate(prop = n / sum(n)) %>%
+      separate(colPaste, c(1:22, "X"), sep = "_") %>%
+      ungroup() %>%
+      mutate(category = paste(row_number(), category, sep="___")) %>%
+      gather(key = chr, value=chr_freq, 2:(ncol(.)-1)) %>%
+      mutate(chr= factor(chr, levels=c(1:22, "X", "n"))) %>%
+      mutate(chr_freq = as.numeric(chr_freq)) %>%
+      separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
+      mutate(row_numb=as.numeric(row_numb)) %>%
+      arrange(categ, row_numb) %>%
+      mutate(category = factor(category,levels=unique(category))) 
+    return(g4)
+  })
+
+
+  output$g5P <- renderPlot({ #plot
+    g5.1 <- ggplot(filter(g4R(), chr %in% c(1:22,"X")), aes(x=chr, y=category, 
+                                                 fill=factor(chr_freq, levels=sort(unique(chr_freq))))) + 
       geom_tile(color = "white", size = 1) + 
       scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
       theme_classic() + theme(axis.ticks = element_blank(),
                               axis.line = element_blank(),
                               axis.text.x = element_text(size= 8),
                               axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      coord_fixed(ratio = 1) + xlab("Chromosome") + ylab("")
+      #coord_fixed(ratio = 1) + 
+      xlab("Chromosome") + ylab("")+ 
+      theme(legend.position="top", 
+            plot.margin=grid::unit(c(0,0,0,0), "mm"),
+            aspect.ratio=1)
     
-    #return(multiplot(list(plotOutput(p), plotOutput(p), plotOutput(p))))
-    return(p)
-    #separate(chr, c("chrRm", "chr"), sep=3) %>% 
-    #dplyr::select(-chrRm) %>% 
-    #filter(chr != "Y") %>% 
-    #mutate(chr = factor(chr, levels=c(1:22, "X")), 
-    #       avgRound=factor(avgRound)) %>%
-    #left_join(pldyk3, by = "smpl") %>%
-    #left_join(gkStats, by = "smpl")
+    g5.2 <- ggplot(filter(g4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
+      geom_tile(color = "white", size = 1) + 
+      scale_fill_gradient(low = "white", high = "black" ) +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(size= 8),
+                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      coord_fixed(ratio = 1) + 
+      xlab("") + ylab("") + 
+      theme(legend.position="top", 
+            plot.margin=grid::unit(c(0,0,0,0), "mm"))
+            #aspect.ratio=1)
+    #cowplot::plot_grid(g5.1, g5.2, labels = c("A", "B"), rel_widths = c(1, 1))
+    #cowplot::plot_grid(g5.1, g5.2, align = "h", nrow = 1, ncol = 2, rel_widths = c(5, 1/4))
+    return(gridExtra::grid.arrange(g5.1, g5.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
   })
   
-  
-  
-  
-  #set up the container for the plots
-  output$gridPlots_ginkgo <- renderUI({
-    cl_ln <- 3 #length(unique(aneuDat_r()$clss))
-    plot_output_list <- lapply(1:cl_ln, function(i) {
-      plotname <- paste("plot_gnk", i, sep="")
-      plotOutput(plotname, height = 450, width = 450)
-    })
-    #create a tagList of all plots
-    do.call(tagList, plot_output_list)
-  })
-  
-  #classes <- reactive({unique(aneuDat_r()$clss)})
-  #fileinput: 'name', 'size', 'type' and 'datapath'.
-  #file_names <- reactive({input$files$name})
-  
-  for (i in 1:3){#max_plots) {
-    local({
-      my_i <- i
-      plotname <- paste("plot_gnk", my_i, sep="")
-      
-      output[[plotname]] <- renderPlot(ginkgo_plot_reactive()) #renderPlot({
-       #cls <- classes()[my_i]
-       #maxChr = 8
-       #maxChrPlus1 = maxChr + 1
-       #matr_plot <- return_chr_prop_matr(aneuDat_r(),cls, maxPair = maxChrPlus1)
-       #plt <- create_perc_matr2(matr_plot, title = file_names()[my_i], minChr = 1, 
-       #                         maxChr = maxChrPlus1, xlab = "", ylab="")
-       #return(plt)
-        
-      #})
-    })
-  }
+
   
   
   
   
+if(interactive()){
+  g2 <- g %>% 
+    gather(key = smpl, value=cp_nm, 4:ncol(.)) %>% 
+    group_by(CHR, smpl) %>% 
+    summarise(avg = mean(cp_nm)) %>% 
+    mutate(avgRound = round(avg)) %>%
+    mutate(avgRound = ifelse(avgRound > 2, 1, ifelse(avgRound == 2, 0, -1))) %>%
+    separate(CHR, c("chrRm", "chr"), sep=3) %>% 
+    dplyr::select(-chrRm) %>% 
+    filter(chr != "Y") %>% 
+    mutate(chr = factor(chr, levels=c(1:22, "X")), 
+           avgRound=factor(avgRound)) %>%
+    left_join(key_xl, c("smpl" = "file_name"))
+  
+  g3 <- g2 %>%
+    dplyr::select(avgRound, chr, category, smpl) %>%
+    spread(chr, avgRound)
   
   
-   #  output$plot_test <- renderPlot({
-   #    plot_output_list <- sapply(1:length(plots), function(i) {
-   #      plotname <- paste("plot", i , sep="")
-   #      plotOutput(plotname, height = 280, width = 250)
-   #    })
-   #    multiplot(plot_output_list)
-   #  })
+  g4 <- g3 %>% 
+    group_by(category)  %>%
+    unite(colPaste, -category, -smpl, remove = FALSE) %>%
+    count(colPaste) %>%
+    mutate(prop = n / sum(n)) %>%
+    separate(colPaste, c(1:22, "X"), sep = "_") %>%
+    ungroup() %>%
+    mutate(category = paste(row_number(), category, sep="___")) %>%
+    gather(key = chr, value=chr_freq, 2:(ncol(.)-1)) %>%
+    mutate(chr= factor(chr, levels=c(1:22, "X", "n"))) %>%
+    mutate(chr_freq = as.numeric(chr_freq)) %>%
+    separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
+    mutate(row_numb=as.numeric(row_numb)) %>%
+    arrange(categ, row_numb) %>%
+    mutate(category = factor(category,levels=unique(category))) 
   
-  #################
-  #if
-  #if(input$rb == "fish2"){
   
-  #### single cell WGS from Ginkgo
-  #if(tools::file_ext(input$files$datapath[1]) %in% c("xlsx", "xls")){
+  ggplot(filter(g4, chr %in% c(1:22,"X")), aes(x=chr, y=category, 
+                                               fill=factor(chr_freq, levels=sort(unique(chr_freq))))) + 
+    geom_tile(color = "white", size = 1) + 
+    scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
+    theme_classic() + theme(axis.ticks = element_blank(),
+                            axis.line = element_blank(),
+                            axis.text.x = element_text(size= 8),
+                            axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+    coord_fixed(ratio = 1) + xlab("Chromosome") + ylab("")
   
+  ggplot(filter(g4, chr == "n"), aes(x=chr, y=category, fill=prop)) + 
+    geom_tile(color = "white", size = 1) + 
+    scale_fill_gradient(low = "white", high = "black" ) +
+    theme_classic() + theme(axis.ticks = element_blank(),
+                            axis.line = element_blank(),
+                            axis.text.x = element_text(size= 8),
+                            axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+    coord_fixed(ratio = 1) + xlab("Chromosome") + ylab("")
+}
+
+  
+
+
+  
+ 
   ######single cell FISH 
   aneuDat_r <- reactive({
     validate(need(input$files != "", "..."))
@@ -444,7 +523,7 @@ server <- shinyServer(function(input, output) {
       mutate(ideal_obs_diff = abs(ideal_nchr - nchr)) %>%
       group_by(clss) %>% 
       summarize(aneupl_score_bakker = sum(ideal_obs_diff) / (length(unique(bins))*sum(nchr))) %>% 
-       spread(key = clss, value=aneupl_score_bakker) %>%
+      spread(key = clss, value=aneupl_score_bakker) %>%
       mutate(variable_=as.factor("aneupl_score_bakker")) %>%
       select(variable_, everything())
     print(aneuploidy_score_bakker)
