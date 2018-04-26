@@ -1,11 +1,9 @@
 library(shiny)
-#library(shinyjs)
 library(readxl)
 library(tidyverse)
 library(here)
 library(janitor)
 library(ggtern)
-library(grid)
 
 source("scripts/helper_scripts.R")
 #LOCALTEST = FALSE
@@ -21,6 +19,7 @@ tabPanelFishMaster <- function(x){
     tabPanel(
       "Summary statistics",
       tableOutput("table"),
+      tableOutput("aneuDat_ploidy_tbl_2"),
       p(
         "Each column in this table represents
         a different file that was uploaded. The rows represent the following:",
@@ -114,7 +113,7 @@ ui <- fluidPage(
       tags$a(target = "_blank", 
              href="http://qb.cshl.edu/ginkgo/uploads/_t10breast_navin/SegCopy?uniq=1210441", "here"), 
       "(save as '.txt' file)"),
-    p("Download Ginkgo key here", 
+    p("Download Ginkgo key", 
       tags$a(target = "_blank",
              href="https://docs.google.com/uc?export=download&id=1bhOEye8FR3Ut9w_hT-SMab2AaUEx9_5x", "here"))
   ),
@@ -394,29 +393,79 @@ if(interactive()){
     coord_fixed(ratio = 1) + xlab("Chromosome") + ylab("")
 }
 
-  
 
-
-  
  
+#  if(interactive()){
+#    
+#  maxChr = 8
+#  maxChrPlus1 = maxChr + 1
+#  #input$files$name
+#  path_list <- list.files(here::here("testDat/"), pattern = "^test_aneupl_file")
+#  tbl_list <- lapply(here::here("testDat", path_list), read_xlsx)
+#  
+#  f1R.t <- map2(.x = path_list, .y= tbl_list,
+#                .f = ~data.frame(clss=.x, .y)) %>% 
+#    do.call(rbind, .) %>% 
+#    as_tibble() %>% 
+#    clean_names() %>%
+#    mutate(variable_ =  apply(.[,2:ncol(.)], 1, classifPloidy)) %>% 
+#    mutate_at(.vars = vars(starts_with("Chr")), 
+#              .funs = ~ifelse(. == 0, 1, 
+#                              ifelse(. <= maxChr, ., maxChrPlus1))) 
+#  
+#  f2R.t <- f1R.t %>% 
+#    mutate(variable_= factor(variable_, levels=c("diploid", "polyploid", "aneuploid"))) %>%
+#    group_by(clss, variable_) %>%
+#    summarise(n = n()) %>%
+#    complete(variable_) %>% 
+#    replace(is.na(.), 0) %>%
+#    mutate(freq = n / sum(n)) %>% 
+#    ungroup %>%
+#    select(-n) %>%
+#    spread(key = variable_, value = freq) %>%
+#    replace(is.na(.), 0)
+#  
+#  f3R.t <- f2R.t %>%
+#    dplyr::mutate(entropy=purrr::pmap_dbl(.[,-1], ~entropy::entropy(c(...)))) %>%
+#    gather(key = "variable_", value = "prop", 2:5) %>%
+#    mutate(variable_ = factor(variable_, 
+#                              levels = rev(c("diploid", "polyploid", "aneuploid", "entropy"))))
+#  
+#  f2R.t %>% mutate_at(vars(ends_with("ploid")), quo(+ 0.1))# as.character)#sum(., 0.01))
+#  
+#  ggplot(f2R.t, aes(x = aneuploid, y=diploid, z=polyploid,
+#                    fill = clss, label = clss)) + geom_point() + coord_tern(expand = TRUE)
+#  p <- ggtern::ggtern(data=data.frame(f2R.t), 
+#         mapping = aes(x = aneuploid, y=diploid, z=polyploid,
+#                   fill = clss, label = clss)) + 
+#    ggtern::coord_tern(expand = TRUE) + 
+#    geom_point(size = 3, alpha = 0.4, pch= 21, color = "black", stroke = 1) + 
+#    ggtern::limit_tern(1.03,1.03,1.03) + 
+#    xlab("") + 
+#    ggtern::Tlab("Diploid") +
+#    ggtern::Llab("Aneuploid") +
+#    ggtern::Rlab("Polyploid") 
+# } #print(p)
+  
   ######single cell FISH 
-  aneuDat_r <- reactive({
+  f1R <- reactive({
     validate(need(input$files != "", "..."))
     
     if (is.null(input$files)) {
       return(NULL)
     }
-    if(tools::file_ext(input$files$datapath[1]) %in% c("xlsx", "xls")){
-    #else {
       
       maxChr = 8
       maxChrPlus1 = maxChr + 1
       
-      path_list <- as.list(input$files$datapath)
+      #path_list <- list.files(here::here("testDat/"), pattern = "^test_aneupl_file")
+      print("input$files$datapath:")
+      print(input$files$datapath)
+      path_list <- as.list(input$files$name)
       #fileinput: 'name', 'size', 'type' and 'datapath'.
       tbl_list <- lapply(input$files$datapath, read_xlsx)
       
-      aneuDat <- map2(.x = input$files$name, .y= tbl_list,
+      f1R.t <- map2(.x = path_list, .y= tbl_list,
                       .f = ~data.frame(clss=.x, .y)) %>% 
         do.call(rbind, .) %>% 
         as_tibble() %>% 
@@ -425,38 +474,38 @@ if(interactive()){
         mutate_at(.vars = vars(starts_with("Chr")), 
                   .funs = ~ifelse(. == 0, 1, 
                                    ifelse(. <= maxChr, ., maxChrPlus1)))
-      print(head(aneuDat))
-      return(aneuDat)
-    }
+      #print(head(aneuDat))
+      return(f1R.t)
+    #}
   })
   
-  aneuDat_ploidy_tbl <- reactive({
-    #aneuDat_r() %>% 
-    #aneuDat_test2 <- aneuDat_test %>%
-    ad_pldy_tb <- aneuDat_r() %>% 
+   f2R <- reactive({
+     f2R.t <- f1R() %>% 
       mutate(variable_= factor(variable_, levels=c("diploid", "polyploid", "aneuploid"))) %>%
       group_by(clss, variable_) %>%
       summarise(n = n()) %>%
-      complete(variable_) %>% #clss, 
+      complete(variable_) %>% 
       replace(is.na(.), 0) %>%
       mutate(freq = n / sum(n)) %>% 
       ungroup %>%
       select(-n) %>%
       spread(key = variable_, value = freq) %>%
       replace(is.na(.), 0)
-    print("head(ad_pldy_tb)")
-    head(ad_pldy_tb)
-    return(ad_pldy_tb)
+    return(f2R.t)
     # add a 0 here
   })
   
-  aneuDat_ploidy_tbl_for_plot <- reactive({
-    aneuDat_ploidy_tbl() %>%
-      #aneuDat_test3 <- aneuDat_test2 %>%
+  aneuDat_ploidy_tbl_2 <- renderTable({
+    head(f2R())
+  })
+  
+  f3R <- reactive({
+    f3R.t <- f2R() %>%
       dplyr::mutate(entropy=purrr::pmap_dbl(.[,-1], ~entropy::entropy(c(...)))) %>%
       gather(key = "variable_", value = "prop", 2:5) %>%
       mutate(variable_ = factor(variable_, 
                              levels = rev(c("diploid", "polyploid", "aneuploid", "entropy"))))
+    return(f3R.t)
   })
   
   output$ploidyPlot <- renderPlot({
@@ -464,7 +513,7 @@ if(interactive()){
     brw_clrs <- c(rev(RColorBrewer::brewer.pal(n = 8, name = "Purples")), "#ffffff",
                   RColorBrewer::brewer.pal(n = 8, name = "Oranges"))
     
-    aneuDat_ploidy_tbl_for_plot() %>%
+    f3R() %>%
       mutate(prop2 = ifelse(variable_ == "entropy", -prop, prop)) %>%
       mutate(prop_cut = cut(.$prop2, breaks = c(-Inf, seq(-1, -0.1, .15), -1e-6, 1e-6, 
                                                 seq(0.1, 1, .15), Inf), 
@@ -487,9 +536,19 @@ if(interactive()){
   
   
   output$ternPlot <- renderPlot({
+    #p <- ggtern::ggtern(data=f2R(), 
+    #                    mapping = aes(x = aneuploid, y=diploid, z=polyploid,
+    #                                  fill = clss, label = clss)) + 
+    #  ggtern::coord_tern(expand = TRUE) + 
+    #  geom_point(size = 3, alpha = 0.4, pch= 21, color = "black", stroke = 1) + 
+    #  ggtern::limit_tern(1.03,1.03,1.03) + 
+    #  xlab("") + 
+    #  ggtern::Tlab("Diploid") +
+    #  ggtern::Llab("Aneuploid") +
+    #  ggtern::Rlab("Polyploid") 
+    #return(p)
     p <- ggtern() + 
-      geom_point(data=aneuDat_ploidy_tbl(), 
-                 aes(x = aneuploid,y=diploid,z=polyploid,
+      geom_point(data=f2R(), aes(x = aneuploid,y=diploid,z=polyploid,
                      fill = clss, label = clss), 
                  size = 3, alpha = 0.4, pch= 21, color = "black", stroke = 1) + 
       limit_tern(1.03,1.03,1.03) + 
@@ -497,27 +556,21 @@ if(interactive()){
       Tlab("Diploid") +
       Llab("Aneuploid") +
       Rlab("Polyploid") 
-    print(p)
-    NULL
+    return(p)
+    
   })
   
   
   output$table <- renderTable({
     #03-24-2018
-    aneuDat_chr_instab_idx <- aneuDat_r() %>% 
-    #aneuDat_chr_instab_idx <- aneuDat_test %>% 
+    aneuDat_chr_instab_idx <- f1R() %>% 
       select(-variable_) %>% 
       gather(key = "chr", value = "numChr", 2:3) %>%
       group_by(clss) %>% 
       summarise (n = n()/length(unique(chr))) %>%
       mutate(freq = n / sum(n))
     
-    print(head(aneuDat_r()))
-    print(dim(aneuDat_chr_instab_idx))
-    print(aneuDat_chr_instab_idx)
-    
-    #aneuploidy_score_bakker <- aneuDat_test %>%
-    aneuploidy_score_bakker <- aneuDat_r() %>%
+    aneuploidy_score_bakker <- f1R() %>%
       gather(key = "bins", value= "nchr", 2:3) %>%
       mutate(ideal_nchr = 2) %>%
       mutate(ideal_obs_diff = abs(ideal_nchr - nchr)) %>%
@@ -529,7 +582,7 @@ if(interactive()){
     print(aneuploidy_score_bakker)
 
     #heterogeneity_score_bakker <- aneuDat_test %>% 
-    heterogeneity_score_bakker <- aneuDat_r() %>%
+    heterogeneity_score_bakker <- f1R() %>%
       select(-variable_) %>% 
       gather(key = "bins", value = "numChr", 2:3) %>%
       mutate(numChrFromEupl = numChr - 2) %>%
@@ -549,7 +602,7 @@ if(interactive()){
     print(heterogeneity_score_bakker)
     
     #instability_idx_bayani <-  aneuDat_test %>% 
-    instability_idx_bayani <- aneuDat_r() %>%
+    instability_idx_bayani <- f1R() %>%
       select(-variable_) %>% 
       gather(key = "bins", value = "numChr", 2:3) %>%
       mutate(isDipl = numChr == 2) %>%
@@ -564,7 +617,7 @@ if(interactive()){
       mutate(variable_=as.factor("instab_idx_bayani")) %>%
       select(variable_, everything())
     
-    anca_idx <- aneuDat_r() %>%
+    anca_idx <- f1R() %>%
     #anca_idx <- aneuDat_test %>% 
       select(-variable_) %>% 
       gather(key = "chrom", value= "nchr", 2:3) %>%
@@ -591,9 +644,9 @@ if(interactive()){
     print(head(aneuDat_chr_instab_idx_n))
     
       
-    #print("aneuDat_ploidy_tbl_for_plot(): ")
-    #print(head(aneuDat_ploidy_tbl_for_plot()))
-    p <- aneuDat_ploidy_tbl_for_plot() %>% 
+    #print("f3R(): ")
+    #print(head(f3R()))
+    p <- f3R() %>% 
       spread(key = clss, value=prop) %>% #chgnd  #  #
       mutate(variable_ = factor(variable_, levels=c("diploid", "polyploid", "aneuploid", "entropy"))) %>%
       arrange(variable_) %>%
@@ -606,7 +659,7 @@ if(interactive()){
   
   #set up the container for the plots
   output$gridPlots <- renderUI({
-    cl_ln <- length(unique(aneuDat_r()$clss))
+    cl_ln <- length(unique(f1R()$clss))
     plot_output_list <- lapply(1:cl_ln, function(i) {
       plotname <- paste("plot", i, sep="")
       plotOutput(plotname, height = 450, width = 450)
@@ -615,7 +668,7 @@ if(interactive()){
     do.call(tagList, plot_output_list)
   })
   
-  classes <- reactive({unique(aneuDat_r()$clss)})
+  classes <- reactive({unique(f1R()$clss)})
   #fileinput: 'name', 'size', 'type' and 'datapath'.
   file_names <- reactive({input$files$name})
   
@@ -628,7 +681,7 @@ if(interactive()){
         cls <- classes()[my_i]
         maxChr = 8
         maxChrPlus1 = maxChr + 1
-        matr_plot <- return_chr_prop_matr(aneuDat_r(),cls, maxPair = maxChrPlus1)
+        matr_plot <- return_chr_prop_matr(f1R(),cls, maxPair = maxChrPlus1)
         plt <- create_perc_matr2(matr_plot, title = file_names()[my_i], minChr = 1, 
                                  maxChr = maxChrPlus1, xlab = "", ylab="")
         return(plt)
