@@ -1,0 +1,485 @@
+KOD	KODTYP	AKTIV	INTERN	BENAMNING	KORTNAMN	NOTERING
+0101	TOP	J	N	Nasal cavity/Paranasal sinuses	Nas cav	 
+0103	TOP	J	N	Nasopharynx	Nasoph	 
+0105	TOP	J	N	Larynx	Larynx	 
+0107	TOP	J	N	Lung	Lung	 
+0109	TOP	J	N	Pleura	Pleura	 
+0140	TOP	J	N	Intrathoracal	Intrathor	
+01	TOP	J	N	Respiratory system (all sites)	Resp tract	 
+0201	TOP	J	N	Lip	Lip	 
+0203	TOP	J	N	Oral cavity	Oral	 
+0205	TOP	J	N	Teeth	Teeth	 
+0208	TOP	J	N	Tongue	Tongue	 
+0210	TOP	J	N	Salivary gland	Sal gl	 
+0212	TOP	J	N	Oro- and hypopharynx	Oroph	 
+0214	TOP	J	N	Oesophagus	Oesoph	 
+0216	TOP	J	N	Stomach	Stomach	 
+0218	TOP	J	N	Pancreas	Panc	 
+0220	TOP	J	N	Liver	Liver	 
+0222	TOP	J	N	Gallbladder/Biliary system	Gall	 
+0225	TOP	J	N	Small intestine	S intest	 
+0227	TOP	J	N	Large intestine	L intest	 
+0230	TOP	J	N	Anus	Anus	 
+0233	TOP	J	N	Peritoneum	Periton	 
+0240	TOP	J	N	Intraabdominal	Intraabdom	
+02	TOP	J	N	Digestive system (all sites)	Digest tract	 
+0301	TOP	J	N	Kidney	Kidney	 
+0303	TOP	J	N	Ureter	Ureter	 
+0305	TOP	J	N	Bladder	Bladder	 
+0307	TOP	J	N	Urethra	Urethra	 
+03	TOP	J	N	Urinary tract (all sites)	Urin tract	 
+0401	TOP	J	N	Breast	Breast	 
+04	TOP	J	N	Breast (all sites)	Breast	
+0501	TOP	J	N	Ovary	Ovary	 
+0503	TOP	J	N	Fallopian tube	Fallop	 
+0505	TOP	J	N	Uterus, corpus	Uterus	 
+0507	TOP	J	N	Uterus, cervix	Cervix	 
+0509	TOP	J	N	Vagina	Vagina	 
+05	TOP	J	N	Female genital organs (all sites)	Fem gen tract	 
+0601	TOP	J	N	Testis	Testis	 
+0602	TOP	J	N	Prostate	Prostate	 
+0603	TOP	J	N	Penis	Penis	 
+06	TOP	J	N	Male genital organs (all sites)	Male gen tract	 
+0702	TOP	J	N	Pituitary	Pituit	 
+0703	TOP	J	N	Adrenal	Adrenal	 
+0704	TOP	J	N	Thyroid	Thyroid	 
+0708	TOP	J	N	Parathyroid	Parath	 
+07	TOP	J	N	Endocrine system (all sites)	Endocr syst	 
+0801	TOP	J	N	Brain	Brain	 
+0802	TOP	J	N	Hypothalamus	Hypothal	 
+0803	TOP	J	N	Pineal body	Pineal	 
+0804	TOP	J	N	Cerebellum	Cereb	 
+0806	TOP	J	N	Brain stem	Brain st	 
+0808	TOP	J	N	Spinal cord	Spinal	 
+0810	TOP	J	N	Eye	Eye	 
+08	TOP	J	N	Central nervous system (all sites)	CNS	 
+0901	TOP	J	N	Skeleton	Skeleton	 
+0902	TOP	J	N	Soft tissue	Soft tissue	 
+09	TOP	J	N	Bone and soft tissues (all sites)	Bone and soft	
+1000	GEO	J	N	Africa unspec	Afr	
+1010	GEO	J	N	Algeria	DZ	 
+1010	MORPH	J	N	Acute undifferentiated leukemia	AUL	 
+1020	GEO	J	N	Egypt	EG	 
+1020	MORPH	J	N	Bilineage or biphenotypic leukemia	AL bi	 
+102	HER	J	N	Sex linked	SL	 
+1030	GEO	J	N	Ethiopia	ET	 
+103	HER	J	N	Autosomal dominant	AD	 
+1040	GEO	J	N	Ghana	GH	 
+104	HER	J	N	Autosomal recessive	AR	 
+1050	GEO	J	N	Kenya	KE	 
+105	HER	J	N	Chromosome breakage syndr	CBS	 
+1060	GEO	J	N	Morocco	MA	 
+1070	GEO	J	N	South Africa	ZA	 
+1075	GEO	J	N	Tunisia	TN	
+1080	GEO	J	N	Zambia	ZM	 
+10	MORPH	J	N	Undifferentiated and biphenotypic leukemia (all subtypes)	AUBL	 
+1101	MORPH	J	N	Acute myeloid leukemia, NOS	AML NOS	 
+1101	TOP	J	N	Skin	Skin	 
+1102	MORPH	J	N	Acute myeloblastic leukemia with minimal differentiation (FAB type M0)	AML M0	 
+1103	MORPH	J	N	Acute myeloblastic leukemia without maturation (FAB type M1)	AML M1	 
+1104	MORPH	J	N	Acute myeloblastic leukemia with maturation (FAB type M2)	AML M2	 
+1106	MORPH	J	N	Acute promyelocytic leukemia (FAB type M3)	AML M3	 
+1107	MORPH	J	N	Acute myelomonocytic leukemia (FAB type M4)	AML M4	 
+1108	MORPH	J	N	Acute monoblastic leukemia (FAB type M5)	AML M5	 
+1109	MORPH	J	N	Acute monoblastic leukemia without differentiation (FAB type M5a)	AML M5a	 
+110	HER	J	N	Chromosome abnormality	CA	 
+1110	MORPH	J	N	Acute monoblastic leukemia with differentiation (FAB type M5b)	AML M5b	 
+1112	MORPH	J	N	Acute erythroleukemia (FAB type M6)	AML M6	 
+1113	MORPH	J	N	Acute megakaryoblastic leukemia (FAB type M7)	AML M7	 
+1115	MORPH	J	N	Acute basophilic leukemia	ABL	
+1117	MORPH	J	N	Acute eosinophilic leukemia	AEL	
+1119	MORPH	J	N	Acute panmyelosis with myelofibrosis	APM	
+115	HER	J	N	Mitochondrial	MC	
+1199	MORPH	J	N	Acute myeloid leukemia, special type	AML spec	 
+11	MORPH	J	N	Acute myeloid leukemia (all subtypes)	AML	 
+11	TOP	J	N	Skin (all sites)	Skin	
+1201	TOP	J	N	Blood vessel	Bl vessel	 
+1202	MORPH	J	N	Chronic myeloid leukemia, t(9;22)	CML t(9;22)	 
+1202	TOP	J	N	Heart	Heart	 
+1203	MORPH	J	N	Chronic myeloid leukemia, aberrant translocation	CML ab t	 
+12	MORPH	J	N	Chronic myeloid leukemia (all subtypes)	CML	 
+12	TOP	J	N	Cardiovascular system (all sites)	Cardvasc syst	 
+1301	MORPH	J	N	Myelodysplastic/myeloproliferative disease, NOS	MDS/MPD NOS	
+1301	TOP	J	N	Thymus	Thymus	 
+1302	MORPH	J	N	Chronic myelomonocytic leukemia	CMML	
+1302	TOP	J	N	Spleen	Spleen	 
+1303	MORPH	J	N	Atypical chronic myeloid leukemia	ACML	
+1303	TOP	J	N	Lymph node	Lymph	 
+1304	MORPH	J	N	Juvenile myelomonocytic leukemia	JMML	
+1399	MORPH	J	N	Myelodysplastic/myeloproliferative disease, special type	MDS/MPD spec	
+13	MORPH	J	N	Myelodysplastic/myeloproliferative disease (all subtypes)	MDS/MPD	
+13	TOP	J	N	Lymphatic system (all sites)	Lymph syst	 
+1401	MORPH	J	N	Chronic myeloproliferative disorder, NOS	CMD NOS	 
+1402	MORPH	J	N	Polycythemia vera	PV	 
+1403	MORPH	J	N	Idiopathic myelofibrosis	MFS	 
+1404	MORPH	J	N	Essential thrombocythemia	ET	 
+1405	MORPH	J	N	Chronic neutrophilic leukemia	CNL	
+1406	MORPH	J	N	Chronic eosinophilic leukemia/hypereosinophilic syndrome	CEL/HES	
+1410	TOP	J	N	Unknown site	Unknown	 
+1499	MORPH	J	N	Chronic myeloproliferative disorder, special type	CMD spec	 
+14	MORPH	J	N	Chronic myeloproliferative disorders (all subtypes)	CMD	 
+1501	MORPH	J	N	Myelodysplastic syndrome, NOS	MDS NOS	 
+1505	MORPH	J	N	Refractory anemia	RA	 
+1507	MORPH	J	N	Refractory anemia with ringed sideroblasts	RARS	 
+1509	MORPH	J	N	Refractory anemia with excess of blasts (FAB)	RAEB	 
+1515	MORPH	J	N	Refractory cytopenia with multilineage dysplasia	RCMD	
+1517	MORPH	J	N	Refractory cytopenia with multilineage dysplasia and ringed sideroblasts	RCMD-RS	
+1519	MORPH	J	N	Refractory anemia with excess blasts-1	RAEB-1	
+1521	MORPH	J	N	Refractory anemia with excess blasts-2	RAEB-2	
+1599	MORPH	J	N	Myelodysplastic syndrome, special type	MDS spec	 
+15	MORPH	J	N	Myelodysplastic syndromes (all subtypes)	MDS	 
+1602	MORPH	J	N	Acute lymphoblastic leukemia/lymphoblastic lymphoma	ALL	 
+1699	MORPH	J	N	Lymphoblastic leukemia/lymphoma, special type	ALL/LL spec	 
+16	MORPH	J	N	Precursor lymphoblastic leukemia/lymphoma (all subtypes)	ALL/LL	 
+1701	MORPH	J	N	Plasma cell neoplasm, NOS	PCN NOS	 
+1702	MORPH	J	N	Multiple myeloma	MM	 
+1704	MORPH	J	N	Monoclonal gammopathy of undetermined significance	MGUS	
+1706	MORPH	J	N	Plasmacytoma	PC	
+1708	MORPH	J	N	Plasma cell leukemia	PCL	
+1710	MORPH	J	N	Waldenström macroglobulinemia	WM	
+1712	MORPH	J	N	Heavy chain disease	HCD	
+1714	MORPH	J	N	Primary amyloidosis	PA	
+1799	MORPH	J	N	Plasma cell neoplasm, special type	PCN spec	 
+17	MORPH	J	N	Plasma cell neoplasms (all subtypes)	PCN	 
+1801	MORPH	J	N	Mature B-cell neoplasm, NOS	MBC NOS	
+1802	MORPH	J	N	Chronic lymphocytic leukemia	B-CLL/SLL	
+1804	MORPH	J	N	B-prolymphocytic leukemia	B-PLL	
+1806	MORPH	J	N	Lymphoplasmacytic lymphoma	LPL	
+1808	MORPH	J	N	Mantle cell lymphoma	MCL	
+1810	MORPH	J	N	Follicular lymphoma	FL	
+1812	MORPH	J	N	Extranodal marginal zone B-cell lymphoma	MALT	
+1814	MORPH	J	N	Nodal marginal zone B-cell lymphoma	NMZL	
+1816	MORPH	J	N	Splenic marginal zone B-cell lymphoma	SMZL	
+1818	MORPH	J	N	Hairy cell leukemia	HCL	
+1820	MORPH	J	N	Diffuse large B-cell lymphoma	DLBL	
+1822	MORPH	J	N	Burkitt lymphoma/leukemia	BL	
+1830	MORPH	J	N	Intravascular large B-cell lymphoma	ILBL	
+1835	MORPH	J	N	Primary effusion lymphoma	PEL	
+1840	MORPH	J	N	Mediastinal large B-cell lymphoma	MLBL	
+1845	MORPH	J	N	B-cell lymphoma associated with hemophagocytic syndrome	BLHPS	
+1899	MORPH	J	N	Mature B-cell neoplasm, special type	MBC spec	
+18	MORPH	J	N	Mature B-cell neoplasms (all subtypes)	MBC	
+1901	MORPH	J	N	Mature T- and NK-cell neoplasm, NOS	MTC NOS	
+1902	MORPH	J	N	T-prolymphocytic leukemia	T-PLL	
+1904	MORPH	J	N	T-cell granular lymphocytic leukemia	T-GLL	
+1906	MORPH	J	N	Mycosis fungoides/Sézary syndrome	MF/SS	
+1908	MORPH	J	N	Peripheral T-cell lymphoma, unspecified	PTL	
+1910	MORPH	J	N	Angioimmunoblastic T-cell lymphoma	AIL	
+1912	MORPH	J	N	Extranodal NK/T-cell lymphoma	ENTL	
+1914	MORPH	J	N	Aggressive NK-cell leukemia	ANL	
+1916	MORPH	J	N	Enteropathy-type T-cell lymphoma	ETL	
+1918	MORPH	J	N	Hepatosplenic T-cell lymphoma	HSTL	
+1920	MORPH	J	N	Subcutaneous panniculitis-like T-cell lymphoma	SPTL	
+1922	MORPH	J	N	Anaplastic large cell lymphoma, systemic type	ALCL-S	
+1924	MORPH	J	N	Anaplastic large cell lymphoma, cutaneous type	ALCL-C	
+1926	MORPH	J	N	Adult T-cell lymphoma/leukemia (HTLV-1+)	ATL	
+1999	MORPH	J	N	Mature T- and NK-cell neoplasm, special type	MTC spec	
+19	MORPH	J	N	Mature T- and NK-cell neoplasms (all subtypes)	MTC	
+1	GEO	J	N	Africa (all countries)	Africa	 
+2000	GEO	J	N	Latin America unspec	Lat Am	
+2001	MORPH	J	N	Hodgkin disease, NOS	HD NOS	 
+2002	MORPH	J	N	Hodgkin disease, lymphocyte predominance	HD LP	 
+2003	MORPH	J	N	Hodgkin disease, mixed cellularity	HD MC	 
+2004	MORPH	J	N	Hodgkin disease, lymphocyte depletion	HD LD	 
+2005	MORPH	J	N	Hodgkin disease, nodular sclerosis	HD NS	 
+2010	GEO	J	N	Argentina	AR	 
+2020	GEO	J	N	Brazil	BR	 
+2030	GEO	J	N	Chile	CL	 
+2040	GEO	J	N	Colombia	CO	 
+2043	GEO	J	N	Dominican Republic	DO	
+2045	GEO	J	N	Ecuador	EC	
+2050	GEO	J	N	Haiti	HT	 
+2060	GEO	J	N	Jamaica	JM	 
+2070	GEO	J	N	Mexico	MX	 
+2080	GEO	J	N	Puerto Rico	PR	 
+2090	GEO	J	N	Uruguay	UY	 
+20	MORPH	J	N	Hodgkin disease (all subtypes)	HD	 
+2410	MORPH	J	N	Dendritic cell neoplasm	DCN	
+2415	MORPH	J	N	Histiocytic sarcoma/malignant histiocytosis	HS/MH	
+2420	MORPH	J	N	Langerhans cell histiocytosis	LCH	
+2430	MORPH	J	N	Mastocytosis	MAST	
+2440	MORPH	J	N	Post-transplant lymphoproliferative disorder	PTLD	
+2499	MORPH	J	N	Miscellaneous hematopoietic/lymphoid neoplasm, special type	MHL spec	
+24	MORPH	J	N	Miscellaneous hematopoietic/lymphoid neoplasms (all subtypes)	MHL	
+2	GEO	J	N	Latin America (all countries)	Latin Amer	 
+3000	GEO	J	N	North America unspec	N Am	
+3001	MORPH	J	N	Benign epithelial tumor, NOS	BET NOS	
+3003	MORPH	J	N	Adenoma	Ad	 
+3010	GEO	J	N	Canada	CA	 
+3011	MORPH	J	N	Papilloma	Pap	 
+3020	GEO	J	N	United States	US	 
+3031	MORPH	J	N	Oncocytoma	Onc	 
+3041	MORPH	J	N	Warthin tumor	Warthin	 
+3055	MORPH	J	N	Phyllodes tumor, benign	Phyll ben	
+3099	MORPH	J	N	Benign epithelial tumor, special type	BET spec	 
+30	MORPH	J	N	Benign epithelial neoplasms (all subtypes)	BET	 
+3101	MORPH	J	N	Carcinoma in situ	CA situ	 
+3102	MORPH	J	N	Carcinoma, NOS	CA NOS	 
+3103	MORPH	J	N	Undifferentiated carcinoma	CA undiff	 
+3104	MORPH	J	N	Undifferentiated carcinoma, large cell	CA l cell	 
+3105	MORPH	J	N	Undifferentiated carcinoma, small cell	CA sm cell	 
+3107	MORPH	J	N	Metaplastic carcinoma	CA metapl	
+3111	MORPH	J	N	Adenocarcinoma	CA ad	 
+3113	MORPH	J	N	Adenoid cystic carcinoma	CA ad cyst	 
+3115	MORPH	J	N	Mucoepidermoid carcinoma	CA mucep	 
+3117	MORPH	J	N	Acinic cell carcinoma	CA acinic	 
+3119	MORPH	J	N	Adenosquamous carcinoma	CA adsq	 
+3121	MORPH	J	N	Squamous cell carcinoma	CA sq cell	 
+3123	MORPH	J	N	Basal cell carcinoma	CA bc	 
+3125	MORPH	J	N	Merkel cell carcinoma	CA Merkel	 
+3131	MORPH	J	N	Transitional cell carcinoma	CA tr cell	 
+3135	MORPH	J	N	Wilms tumor	Wilms	 
+3141	MORPH	J	N	Hepatoblastoma	Hpt	 
+3151	MORPH	J	N	Carcinoid tumor	Carcd	 
+3155	MORPH	J	N	Phyllodes tumor, malignant	Phyll mal	
+3199	MORPH	J	N	Malignant epithelial tumor, special type	MET spec	 
+31	MORPH	J	N	Malignant epithelial neoplasms (all subtypes)	MEN	 
+3901	MORPH	J	N	Germ cell tumor, NOS	GCT NOS	 
+3902	MORPH	J	N	Seminoma/Dysgerminoma	Sem	 
+3903	MORPH	J	N	Teratoma (mature and immature)	Terat	 
+3905	MORPH	J	N	Combined germ cell tumors	Sem/Terat	 
+3909	MORPH	J	N	Gonadal stromal cell tumors	GST	 
+3999	MORPH	J	N	Germ cell tumor, special type	GCT spec	 
+39	MORPH	J	N	Germ cell and gonadal stromal cell neoplasms (all subtypes)	GCT	 
+3	GEO	J	N	North America (all countries)	North Amer	 
+4000	GEO	J	N	Asia unsp	Asia	
+4005	GEO	J	N	Armenia	AM	
+4010	GEO	J	N	China	CN	 
+4020	GEO	J	N	Hong Kong	HK	 
+4030	GEO	J	N	India	IN	 
+4040	GEO	J	N	Indonesia	ID	 
+4050	GEO	J	N	Iran	IR	 
+4060	GEO	J	N	Israel	IL	 
+4070	GEO	J	N	Japan	JP	 
+4075	GEO	J	N	Jordan	JO	
+4080	GEO	J	N	Kuwait	KW	 
+4085	GEO	J	N	Lebanon	LB	
+4090	GEO	J	N	Malaysia	MY	 
+4095	GEO	J	N	Oman	OM	
+4100	GEO	J	N	Pakistan	PK	 
+4110	GEO	J	N	Philippines	PH	 
+4120	GEO	J	N	Saudi Arabia	SA	 
+4130	GEO	J	N	Singapore	SG	 
+4140	GEO	J	N	South Korea	KR	 
+4145	GEO	J	N	Syria	SY	
+4150	GEO	J	N	Taiwan	TW	 
+4160	GEO	J	N	Thailand	TH	 
+4170	GEO	J	N	Turkey	TR	 
+4180	GEO	J	N	Vietnam	VN	 
+4	GEO	J	N	Asia (all countries)	Asia	 
+5000	GEO	N	J	Europe unspec	Eur	
+5010	GEO	J	N	Albania	AL	 
+5020	GEO	J	N	Austria	AT	 
+5025	GEO	J	N	Belarus	BY	
+5030	GEO	J	N	Belgium	BE	 
+5040	GEO	J	N	Bulgaria	BG	 
+5045	GEO	J	N	Croatia	HR	
+5050	GEO	J	N	Czech Republic	CZ	 
+5060	GEO	J	N	Denmark	DK	 
+5070	GEO	J	N	Finland	FI	 
+5080	GEO	J	N	France	FR	 
+5085	GEO	J	N	Georgia	GE	
+5090	GEO	J	N	Germany	DE	 
+5100	GEO	J	N	Greece	GR	 
+5101	MORPH	J	N	Glioma, NOS	Gli NOS	 
+5102	MORPH	J	N	Astrocytoma, NOS	Astcyt	 
+5103	MORPH	J	N	Astrocytoma, grade I-II	Astcyt I-II	 
+5104	MORPH	J	N	Astrocytoma, grade III-IV/Glioblastoma	Astcyt III-IV	 
+5105	MORPH	J	N	Astrocytoma, pilocytic/juvenile	Astcyt juv	 
+5107	MORPH	J	N	Oligodendroglioma	Oligdgl	 
+5109	MORPH	J	N	Ependymoma	Ependym	 
+5110	GEO	J	N	Hungary	HU	 
+5115	MORPH	J	N	Choroid plexus papilloma/carcinoma	Plex pap	 
+5120	GEO	J	N	Iceland	IS	 
+5130	GEO	J	N	Ireland	IE	 
+5140	GEO	J	N	Italy	IT	 
+5145	GEO	J	N	Latvia	LV	
+5150	GEO	J	N	Lichtenstein	LI	 
+5160	GEO	J	N	Monaco	MC	 
+5170	GEO	J	N	Netherlands	NL	 
+5180	GEO	J	N	Norway	NO	 
+5190	GEO	J	N	Poland	PL	 
+5199	MORPH	J	N	Neuroglial neoplasm, special type	NGN spec	 
+51	MORPH	J	N	Neuroglial neoplasms (all subtypes)	NGN	 
+5200	GEO	J	N	Portugal	PT	 
+5201	MORPH	J	N	Embryonal nervous system tumor, NOS	Embr nerv	 
+5210	GEO	J	N	Romania	RO	 
+5211	MORPH	J	N	Retinoblastoma	Retbl	 
+5213	MORPH	J	N	Neuroblastoma	Neurbl	 
+5220	GEO	J	N	Russia	RU	 
+5220	MORPH	J	N	Primitive neuroectodermal tumor/Medulloblastoma	PNET	 
+5225	GEO	J	N	Serbia	CS	
+5230	GEO	J	N	Slovakia	SK	 
+5230	MORPH	J	N	Peripheral neuroepithelioma	Per neuro	
+5235	GEO	J	N	Slovenia	SI	
+5240	GEO	J	N	Spain	ES	 
+5250	GEO	J	N	Sweden	SE	 
+5260	GEO	J	N	Switzerland	CH	 
+5265	GEO	J	N	Ukraine	UA	
+5270	GEO	J	N	United Kingdom	UK	 
+5299	MORPH	J	N	Embryonal nervous system tumor, special type	Embr nerv spec	 
+52	MORPH	J	N	Embryonal nervous system tumors (all subtypes)	EN	 
+5	GEO	J	N	Europe (all countries)	Europe	 
+6000	GEO	J	N	Oceania unspec	Ocean	
+6001	MORPH	J	N	Nevus, NOS	Nevus	 
+6002	MORPH	J	N	Benign nevus	Ben nevus	 
+6003	MORPH	J	N	Dysplastic nevus	Dys nevus	 
+6011	MORPH	J	N	Malignant melanoma	Mal mel	 
+6099	MORPH	J	N	Melanocytic neoplasm, special type	MELN spec	 
+60	MORPH	J	N	Melanocytic neoplasms (all subtypes)	MELN	 
+6101	GEO	J	N	Australia	AU	 
+6102	GEO	J	N	New Zealand	NZ	 
+6	GEO	J	N	Oceania (all countries)	Oceania	 
+8001	MORPH	J	N	Adipocytic tumor, NOS	Adipo	
+8004	MORPH	J	N	Lipoma	Lip	
+8007	MORPH	J	N	Lipoblastoma	Lip blast	
+8010	MORPH	J	N	Angiolipoma	Lip ang	
+8013	MORPH	J	N	Myolipoma	Lip myo	
+8016	MORPH	J	N	Chondroid lipoma	Lip chondr	
+8019	MORPH	J	N	Angiomyolipoma	Lip angmyo	
+8022	MORPH	J	N	Spindle cell/pleomorphic lipoma	Lip spindle	
+8025	MORPH	J	N	Hibernoma	Hib	
+8028	MORPH	J	N	Atypical lipomatous tumor/atypical lipoma/well-differentiated liposarcoma	SA lip atyp	
+8031	MORPH	J	N	Liposarcoma, dedifferentiated	SA lip dediff	
+8034	MORPH	J	N	Liposarcoma, myxoid/round cell	SA lip myx	
+8037	MORPH	J	N	Liposarcoma, pleomorphic	SA lip pleo	
+8040	MORPH	J	N	Liposarcoma, NOS	SA lip	
+8099	MORPH	J	N	Adipocytic tumor, special type	Adipo spec	
+80	MORPH	J	N	Adipocytic tumors (all subtypes)	Adipocytic	
+8101	MORPH	J	N	Fibroblastic/myofibroblastic tumor, NOS	Fib myofib	
+8104	MORPH	J	N	Nodular fasciitis	Nod fasc	
+8105	MORPH	J	N	Proliferative fasciitis/myositis	Prol fasc	
+8107	MORPH	J	N	Myositis ossificans	Myositis	
+8110	MORPH	J	N	Fibroma	Fibr	
+8111	MORPH	J	N	Fibroma of tendon sheath	Fibr tend sheath	
+8112	MORPH	J	N	Desmoplastic fibroblastoma	Desmopl fibr	
+8113	MORPH	J	N	Angiofibroma	Fibr ang	
+8116	MORPH	J	N	Solitary fibrous tumor	Sol fibr	
+8119	MORPH	J	N	Superficial fibromatosis	Fibromatosis	
+8122	MORPH	J	N	Desmoid-type fibromatosis	Desmoid	
+8125	MORPH	J	N	Inflammatory myofibroblastic tumor/myofibroblastic sarcoma	SA myo fibr	
+8128	MORPH	J	N	Dermatofibrosarcoma protuberans/Bednar tumor/giant cell fibroblastoma	DFSP	
+8131	MORPH	J	N	Fibrosarcoma	SA fibr	
+8134	MORPH	J	N	Low-grade fibromyxoid sarcoma	SA LGFMS	
+8135	MORPH	J	N	Sclerosing epithelioid fibrosarcoma	SA SEF	
+8136	MORPH	J	N	Myxoinflammatory fibroblastic sarcoma	SA MIFS	
+8137	MORPH	J	N	Myxofibrosarcoma	SA myx fibr	
+8199	MORPH	J	N	Fibroblastic/myofibroblastic tumor, special type	Fib myofib spec	
+81	MORPH	J	N	Fibroblastic/myofibroblastic tumors (all subtypes)	Fibroblastic	
+8201	MORPH	J	N	Fibrohistiocytic tumor, NOS	Fibrohist	
+8204	MORPH	J	N	Localized giant cell tumor of tendon sheath	GCT tendon	
+8207	MORPH	J	N	Diffuse-type giant cell tumor	GCT diffuse	
+8210	MORPH	J	N	Benign fibrous histiocytoma	Fibr hist	
+8215	MORPH	J	N	Plexiform fibrohistiocytic tumor	Plex fibrohist	
+8299	MORPH	J	N	Fibrohistiocytic tumor, special type	Fibrohist spec	
+82	MORPH	J	N	Fibrohistiocytic tumors (all subtypes)	Fibrohistiocytic	
+8301	MORPH	J	N	Muscle tumor, NOS	Myo	
+8304	MORPH	J	N	Leiomyoma	Lei	
+8307	MORPH	J	N	Myogenic sarcoma, NOS	SA myo	
+8310	MORPH	J	N	Leiomyosarcoma	SA lei	
+8313	MORPH	J	N	Rhabdomyoma	Rhabd	
+8316	MORPH	J	N	Rhabdomyosarcoma, NOS	SA rhabd	
+8319	MORPH	J	N	Embryonal rhabdomyosarcoma	SA rhabd emb	
+8322	MORPH	J	N	Alveolar rhabdomyosarcoma	SA rhabd alv	
+8325	MORPH	J	N	Pleomorphic rhabdomyosarcoma	SA rhabd pleo	
+8327	MORPH	J	N	Spindle cell/sclerosing rhabdomyosarcoma	SA rhabd spindle/scler	
+8399	MORPH	J	N	Muscle tumor, special type	Myo spec	
+83	MORPH	J	N	Muscle tumors (all subtypes)	Muscle	
+8401	MORPH	J	N	Vascular and perivascular tumor, NOS	Vasc	
+8404	MORPH	J	N	Hemangioma/lymphangioma	Angioma	
+8405	MORPH	J	N	Pericytoma	Pericytoma	
+8406	MORPH	J	N	Pseudomyogenic hemangioendothelioma	Pseudmyo hemang	
+8407	MORPH	J	N	Epithelioid hemangioendothelioma	Epithel hemang	
+8410	MORPH	J	N	Glomus tumor	Glomus	
+8416	MORPH	J	N	Kaposi sarcoma	SA Kaposi	
+8419	MORPH	J	N	Angiosarcoma	SA angio	
+8499	MORPH	J	N	Vascular and perivascular tumor, special type	Vasc spec	
+84	MORPH	J	N	Vascular and perivascular tumors (all subtypes)	Vascular	
+8501	MORPH	J	N	Soft tissue tumor, NOS	Soft	
+8504	MORPH	J	N	Myxoma	Mx	
+8505	MORPH	J	N	Pleomorphic hyalinizing angiectatic tumor	PHAT	
+8506	MORPH	J	N	Angiomatoid fibrous histiocytoma	AFH	
+8507	MORPH	J	N	Neurofibroma	Neur fibr	
+8510	MORPH	J	N	Schwannoma	Schwann	
+8513	MORPH	J	N	Perineurioma	Peri neur	
+8516	MORPH	J	N	Malignant peripheral nerve sheath tumor/Triton	MPNST	
+8517	MORPH	J	N	Ossifying fibromyxoid tumor	OFMT	
+8519	MORPH	J	N	Myoepithelioma/myoepithelial carcinoma/mixed tumor	Myoepithelial	
+8520	MORPH	J	N	Hemosiderotic fibrolipomatous tumor	HFLT	
+8522	MORPH	J	N	Synovial sarcoma	SA syn	
+8525	MORPH	J	N	Epithelioid sarcoma	SA epithel	
+8528	MORPH	J	N	Alveolar soft part sarcoma	SA alv soft	
+8531	MORPH	J	N	Clear cell sarcoma	SA clear	
+8534	MORPH	J	N	Desmoplastic small round cell tumor	DSRCT	
+8537	MORPH	J	N	PEComa	PEComa	
+8540	MORPH	J	N	Undifferentiated sarcoma	SA undiff	
+8541	MORPH	J	N	Undifferentiated pleomorphic sarcoma	SA undiff pleo	
+8542	MORPH	J	N	Undifferentiated round cell sarcoma	SA undiff round	
+8545	MORPH	J	N	Intimal sarcoma	SA intimal	
+8599	MORPH	J	N	Soft tissue tumor, special type	Soft spec	
+85	MORPH	J	N	Miscellaneous soft tissue tumors (all subtypes)	Soft tissue	
+8601	MORPH	J	N	Cartilage tumor, NOS	Cartilage	
+8604	MORPH	J	N	Osteochondroma	Exo	
+8607	MORPH	J	N	Chondroma	Chondr	
+8608	MORPH	J	N	Subungual exostosis	Subung exo	
+8609	MORPH	J	N	Bizarre parosteal osteochondromatous proliferation	BPOP	
+8610	MORPH	J	N	Chondroblastoma	Chondr blast	
+8613	MORPH	J	N	Chondromyxoid fibroma	Chondr myx	
+8616	MORPH	J	N	Synovial chondromatosis	Chondr syn	
+8619	MORPH	J	N	Chondroid hamartoma	Chondr ham	
+8622	MORPH	J	N	Chondrosarcoma, NOS	SA chondr	
+8625	MORPH	J	N	Chondrosarcoma, myxoid	SA chondr myx	
+8628	MORPH	J	N	Chondrosarcoma, mesenchymal	SA chondr mes	
+8631	MORPH	J	N	Chondrosarcoma, clear cell	SA chondr clear	
+8634	MORPH	J	N	Chondrosarcoma, dedifferentiated	SA chondr dediff	
+8699	MORPH	J	N	Cartilage tumor, special type	Cartilage spec	
+86	MORPH	J	N	Cartilage tumors (all subtypes)	Chondrogenic	
+8701	MORPH	J	N	Osteogenic/bone tumor, NOS	Osteo	
+8704	MORPH	J	N	Osteoid osteoma	Osteoma	
+8707	MORPH	J	N	Osteoblastoma	Ost blast	
+8710	MORPH	J	N	Osteosarcoma, NOS	SA ost	
+8713	MORPH	J	N	Osteosarcoma, telangiectatic	SA ost tel	
+8716	MORPH	J	N	Osteosarcoma, small cell	SA ost small	
+8719	MORPH	J	N	Osteosarcoma, parosteal	SA ost par	
+8722	MORPH	J	N	Osteosarcoma, periosteal	SA ost peri	
+8725	MORPH	J	N	Aneurysmal bone cyst	ABC	
+8728	MORPH	J	N	Fibrous dysplasia	Fibr dys	
+8731	MORPH	J	N	Osteofibrous dysplasia	Ost fibr dys	
+8734	MORPH	J	N	Giant cell tumor of bone	GCT bone	
+8737	MORPH	J	N	Adamantinoma	Adamant	
+8740	MORPH	J	N	Ewing sarcoma	SA Ewing	
+8743	MORPH	J	N	Chordoma	Chord	
+8799	MORPH	J	N	Osteogenic/bone tumor, special type	Osteo spec	
+87	MORPH	J	N	Osteogenic/miscellaneous bone tumors (all subtypes)	Osteogenic	
+8801	MORPH	J	N	Mesenchymal tumor, NOS	Mesen tum	
+8804	MORPH	J	N	Meningioma	Mening	
+8807	MORPH	J	N	Mesoblastic nephroma	Mes nephr	
+8810	MORPH	J	N	Mesothelioma	Mesothel	
+8813	MORPH	J	N	Endometrial stromal sarcoma	End stromal	
+8816	MORPH	J	N	Gastrointestinal stromal tumor	GI stromal	
+8819	MORPH	J	N	Rhabdoid tumor	Rhabdoid	
+8899	MORPH	J	N	Mesenchymal tumor, special type	Mesen tum spec	
+88	MORPH	J	N	Miscellaneous mesenchymal tumors (all subtypes)	Mesenchymal	
+9010	MORPH	J	N	Hyperplasia	Hyperpl	 
+9013	MORPH	J	N	Metaplasia	Metapl	 
+9016	MORPH	J	N	Dysplasia	Dyspl	 
+9029	MORPH	J	N	Nonneoplastic hematologic disorder/lesion	Nonneo hemat	 
+9049	MORPH	J	N	Nonneoplastic epithelial disorder/lesion	Nonneo epith	 
+9059	MORPH	J	N	Nonneoplastic mesenchymal disorder/lesion	Nonneo mes	 
+9069	MORPH	J	N	Nonneoplastic neurogenic disorder/lesion	Nonneo neuro	 
+9099	MORPH	J	N	Nonneoplastic disorder/lesion, special type	Nonneo spec	 
+90	MORPH	J	N	Nonneoplastic disorders/lesions (all subtypes)	NONNEO	 
+A	RACE	J	N	Asian	Asian	 
+BM	TISSUE	J	N	Bone marrow	Bone marrow	 
+B	RACE	J	N	Black	Black	 
+CSF	TISSUE	J	N	Cerebrospinal fluid	CSF	 
+C	TREAT	J	N	Chemotherapy	Chemotherapy	 
+EX	TISSUE	J	N	Exudate	Exudate	 
+ 	GEO	 	 	 		
+LN	TISSUE	J	N	Lymph node	Lymph node	 
+O	RACE	J	N	Other	Other	 
+O	TREAT	J	N	Other / Unknown	Other	 
+R	TREAT	J	N	Radiotherapy	Radiotherapy	 
+S	TREAT	J	N	Surgery	Surgery	 
+TB	TISSUE	J	N	Tumor biopsy	Tumor biopsy	 
+W	RACE	J	N	White	White	 

@@ -11,12 +11,17 @@ classifPloidy = function(x){
 }
 
 return_chr_prop_matr <- function(chromosomes, ltr, maxPair){
+  
+  #maxPair = maxChrPlus1
+  #chromosomes = f1R.t %>% select(1:3, 6)#f1R.t2
+  #ltr = classes[1]
   all_perms = as.data.frame(gtools::permutations(maxPair, 2, repeats.allowed = T)) %>%
     mutate(chrPaste=paste0(V1, V2))
   #chromosomes <- aneuDat_test %>% rename(clss=class)
   #ltr <- "test_aneupl_file_2.xlsx"
   chromosomes2 <- chromosomes %>%
     filter(clss == ltr) %>%
+    mutate_at(2:3, .funs = ~ifelse(. > maxPair, maxPair, .)) %>%
     group_by_(colnames(.)[2], colnames(.)[3]) %>%
     count() %>%
     ungroup() %>%
@@ -37,7 +42,8 @@ create_perc_matr2 <- function(matr, title, minChr, maxChr, xlab, ylab){
     geom_tile(color = "black") +  
     theme_classic() +
     theme(axis.text=element_text(size=19, colour = "black"), 
-          axis.line = element_blank(), axis.ticks = element_blank()) +
+          axis.line = element_blank(), axis.ticks = element_blank(),
+          legend.position="none") +
     scale_fill_gradient(low = "white", high = "firebrick3", limits = c(0,2)) + 
     geom_text(size = 4.5, aes(label = prop.r.cl)) + 
     coord_fixed() +
@@ -50,7 +56,7 @@ create_perc_matr2 <- function(matr, title, minChr, maxChr, xlab, ylab){
   return(x)
 }
 
-
+ 
 create_perc_matr3 <- function(matr, title, minChr, maxChr, xlab, ylab){
   tot= sum(matr$n)
   gridSize <- maxChr - minChr + 1
