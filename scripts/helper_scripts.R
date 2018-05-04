@@ -115,3 +115,157 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
     }
   }
 }
+
+
+tabPanelFishMaster <- function(x){
+  
+  tabsetPanel(
+    tabPanel("Grid Plots", uiOutput("gridPlots")),
+    tabPanel("Grid Plots w grid.arrange", plotOutput("gridPlots2")),
+    tabPanel(
+      "Summary statistics",
+      tableOutput("ft"),
+      p(
+        "Each column in this table represents
+        a different file that was uploaded. The rows represent the following:",
+        
+        tags$ul(
+          tags$li(
+            "The first 3 rows represent
+            the proportion of diploid (2n), polyploid, and aneuploid cells in
+            each sample."
+          ),
+          tags$li(
+            "The 4th row represents entropy, which was calculated
+            using the values in the first 3 rows."
+          ),
+          tags$li(
+            "The 5th row (n) represents the total number of cells analyzed within the file."
+          ),
+          tags$li(
+            "The average number of copy alterations per group (anca_score) was calculated as in",
+            tags$a(target = "_blank", href = "https://www.ncbi.nlm.nih.gov/pubmed/12775914", "Blegen et al 2003")
+          ),
+          tags$li(
+            "The aneuploidy and heterogeneity scores were calculated as in",
+            tags$a(
+              target = "_blank",
+              href = "https://www.ncbi.nlm.nih.gov/pubmed/27246460",
+              "Bakker et al 2016 (Suppl.Methods & Table S2)"
+            )
+          ),
+          tags$li(
+            "The instability index (instab_idx_bayani) was calculated as in",
+            tags$a(
+              target = "_blank",
+              href = "https://www.ncbi.nlm.nih.gov/pubmed/18813350",
+              "Bayani et al 2008"
+            ), "and", tags$a(
+              target = "_blank",
+              href = "https://www.ncbi.nlm.nih.gov/pubmed/9121588",
+              "Langauer et al 1997"
+            ), ". I believe this is equivalent to the anca_score."
+          )
+          ),
+        "Also, none of these methods weigh the number of chromosomes/degree of aneuploidy, 
+        which could present an opportunity for developing a new index."
+      )
+      ),
+    tabPanel("Ternary Plot", plotOutput("ternPlot")),
+    tabPanel("Entropy Plot", plotOutput("ploidyPlot")))
+}
+
+
+
+############
+#helper scripts - added 05-04-2018
+
+calc_heterog_score <- function(chr_tbl, retChr = FALSE){ #also returns "n"
+  #chr_tbl <- s2
+  n_smpl_per_categ <- table(chr_tbl$category) / length(unique(chr_tbl$chr))# %>% data.frame
+  n_smpl_per_categ.df <- as_tibble(n_smpl_per_categ) %>% rename(category = "Var1")
+  
+  if(retChr){
+    heterog_tbl <-  chr_tbl %>%
+      group_by(category, chr, num_chr, file_type) %>%
+      summarize(mft=n()) %>% 
+      arrange(category, chr, mft,  num_chr) %>% #category, bins,  mft, cp_nm
+      ungroup() %>%
+      group_by(category, chr, file_type) %>%
+      mutate(f = rev(1:n()-1)) %>%
+      mutate(mft_f = mft * f) %>%
+      ungroup() %>%
+      group_by(category, chr, file_type) %>%
+      summarize(heterog_score_bakker_prelim = sum(mft_f)/ (length(unique(chr)))) %>% 
+      left_join(n_smpl_per_categ.df, by="category") %>%
+      mutate(heterog_score_bakker = heterog_score_bakker_prelim / n) %>%
+      select(category, chr, heterog_score_bakker, n, file_type) # %>%
+      #mutate(categ_file_type = paste0(category, "_",file_type))
+    return(heterog_tbl)
+  }
+  
+  chr_tbl %>%
+    group_by(category, chr, num_chr, file_type) %>%
+    summarize(mft=n()) %>% 
+    arrange(category, chr, mft,  num_chr) %>% #category, bins,  mft, cp_nm
+    ungroup() %>%
+    group_by(category, chr, file_type) %>%
+    mutate(f = rev(1:n()-1)) %>%
+    mutate(mft_f = mft * f) %>%
+    ungroup() %>%
+    group_by(category, file_type) %>%
+    summarize(heterog_score_bakker_prelim = sum(mft_f)/ (length(unique(chr)))) %>% 
+    left_join(n_smpl_per_categ.df, by="category") %>%
+    mutate(heterog_score_bakker = heterog_score_bakker_prelim / n) %>%
+    select(category, heterog_score_bakker, n, file_type)  #%>%
+   # mutate(categ_file_type = paste0(category, "_",file_type))
+}
+
+
+calc_aneupl_score <- function(chr_tbl, retChr = FALSE){
+  if(retChr){
+    aneupl_tbl <- chr_tbl %>%
+      mutate(ideal_nchr = 2) %>%
+      mutate(ideal_obs_diff = abs(ideal_nchr - num_chr)) %>%
+      group_by(category, chr, file_type) %>% 
+      summarize(sum_ideal_obs_diff = sum(ideal_obs_diff), n_bins_times_n_cells_per_group = n()) %>%
+      mutate(aneupl_score_bakker = sum_ideal_obs_diff / n_bins_times_n_cells_per_group) %>%
+      select(category, chr, aneupl_score_bakker, file_type)  #%>%
+      #mutate(categ_file_type = paste0(category, "_",file_type))
+      #mutate(source)
+    return(aneupl_tbl)
+  }
+  chr_tbl %>%
+    mutate(ideal_nchr = 2) %>%
+    mutate(ideal_obs_diff = abs(ideal_nchr - num_chr)) %>%
+    group_by(category, file_type) %>% 
+    summarize(sum_ideal_obs_diff = sum(ideal_obs_diff), n_bins_times_n_cells_per_group = n()) %>%
+    mutate(aneupl_score_bakker = sum_ideal_obs_diff / n_bins_times_n_cells_per_group) %>%
+    select(category, aneupl_score_bakker, file_type)  #%>%
+   # mutate(categ_file_type = paste0(category, "_",file_type))
+}
+
+
+calc_anca_score <-  function(chr_tbl, retChr = FALSE) {
+  if(retChr){
+    anca_tbl <- chr_tbl %>% mutate(diploid_bin = num_chr == 2) %>%
+      group_by(category, diploid_bin, chr, file_type) %>% 
+      summarise (n = n()) %>%
+      spread(key = diploid_bin, value=n) %>%
+      clean_names() %>%
+      mutate_if(is.integer, funs(replace(., is.na(.), 0))) %>% #replace all NA with 0
+      mutate(anca_score_blegen = false/ (true + false)) %>% 
+      select(category, chr, anca_score_blegen, file_type) #%>%
+      #mutate(categ_file_type = paste0(category, "_",file_type))
+    return(anca_tbl)
+  }
+  chr_tbl %>% mutate(diploid_bin = num_chr == 2) %>%
+    group_by(category, diploid_bin, file_type) %>% 
+    summarise (n = n()) %>%
+    spread(key = diploid_bin, value=n) %>%
+    clean_names() %>%
+    mutate_if(is.integer, funs(replace(., is.na(.), 0))) %>% #replace all NA with 0
+    mutate(anca_score_blegen = false / (true + false)) %>% 
+    select(category, anca_score_blegen, file_type) #%>%
+    #mutate(categ_file_type = paste0(category, "_",file_type))
+}
