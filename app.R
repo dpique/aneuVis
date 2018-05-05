@@ -226,9 +226,9 @@ ui <- navbarPage(
 server <- shinyServer(function(input, output) {
   ###########
   #1. Read in raw ginkgo data
-   gR <- eventReactive(input$submit_wgs, { #var. named with capital R for Reactive
+   gR <- eventReactive(input$submit_wgs, ignoreNULL = FALSE, { #var. named with capital R for Reactive
      #sprintf("hello3")
-     validate(need(input$gnk_file != "", "..."))
+     #validate(need(input$gnk_file != "", "..."))
      #print("hello2")
     if (is.null(input$gnk_file)) {
       return(NULL)
@@ -251,7 +251,7 @@ server <- shinyServer(function(input, output) {
    #2. read in the ginkgo key 
    
    gKR <- reactive({#eventReactive(input$submit, { #g for ginkgo K for Key, R for reactive
-     validate(need(input$gnk_key != "", "..."))
+     #validate(need(input$gnk_key != "", "..."))
      
      if (is.null(input$gnk_key)) {
        return(NULL)
@@ -259,13 +259,16 @@ server <- shinyServer(function(input, output) {
      gK <- read_xlsx(path = input$gnk_key$datapath[1], sheet = 1) #%>%
        #mutate(category = paste0(category, "__sc-wgs"))
      
-     print("head(gk):")
-     print(head(gK))
+     #print("head(gk):")
+     #print(head(gK))
      return(gK)
    })
    
    
   g2R <- reactive({
+    if (is.null(gR())) {
+      return(NULL)
+    }
     g2 <- gR() %>% 
       gather(key = smpl, value=cp_nm, 4:ncol(.)) %>% 
       group_by(CHR, smpl) %>% 
@@ -282,6 +285,9 @@ server <- shinyServer(function(input, output) {
   })
   
   g2.1R <- reactive({
+    if (is.null(gR())) {
+      return(NULL)
+    }
     g2.t <- g2R() %>% #select(-avgRound) %>%
       spread(key = chr, value = num_chr)
     return(g2.t)
@@ -297,18 +303,17 @@ server <- shinyServer(function(input, output) {
   )
 
   output$g2T <- DT::renderDataTable({
+    if (is.null(g2R())) {
+      return(NULL)
+    }
     DT::datatable(g2R())
-  })#renderTable({
-    #head(g2R())
- # })
-  s2R <- reactive({
-    NULL
-  }) 
+  })
   
-  f1R <- eventReactive(input$submit_fish, { #reactive({
-    validate(need(input$fish_files != "", "..."))
+  f1R <- eventReactive(input$submit_fish, ignoreNULL = FALSE, {
+    #validate(need(input$fish_files != "", "..."))
     
-    if (is.null(input$fish_files)) {
+    #if (is.null(input$fish_files)) {
+    if (!is.data.frame(input$fish_files)) {
       return(NULL)
     }
     
@@ -330,23 +335,17 @@ server <- shinyServer(function(input, output) {
       mutate(chr = factor(chr, levels=c(1:22, "X"))) %>%
       mutate(file_type = "fish") %>%
       .[ , order(names(.))] 
-      #map2(.x = path_list, .y= tbl_list,
-      #         .f = ~data.frame(clss=.x, .y)) %>% 
-      #do.call(rbind, .) %>% 
-      #as_tibble() %>% 
-      #clean_names() %>%
-      #mutate(variable_ =  apply(.[,2:ncol(.)], 1, classifPloidy)) %>% 
-      #mutate_at(.vars = vars(starts_with("Chr")), 
-      #          .funs = ~ifelse(. == 0, 1, 
-      #                          ifelse(. <= maxChr, ., maxChrPlus1)))
-    return(f1)
+    
+     return(f1)
   })
   
   f1TestTable_r <- reactive({
-    
+    if (is.null(f1R())) {
+      return(NULL)
+    }
   calc_aneupl_score(f1R())
     #print(calc_aneupl_score(f1R()))
-    print(calc_aneupl_score(g2R()))
+    #print(calc_aneupl_score(g2R()))
   #list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
    # print("length(list_to_pass):")
    # print(length(list_to_pass))
@@ -354,33 +353,128 @@ server <- shinyServer(function(input, output) {
    # head(aneupl_scores)
   })
   
-  output$f1TestTable <- renderTable({
-    f1TestTable_r()
-    })
+
   
+  s1R <- eventReactive(input$submit_sky, ignoreNULL = FALSE, { #reactive({
+    #validate(need(input$sky_file != "", "..."))
+    print("class(input$sky_file)")
+    print(class(input$sky_file))
+    if (is.null(input$sky_file)) {
+      return(NULL)
+    }
+    
+    s1 <- read_xlsx(input$sky_file$datapath) %>% 
+      clean_names() %>%
+      filter(rowSums(is.na(.)) <= .50*ncol(.)) %>% #remove rows where > 50% of values are na
+      filter(.[,1] != "Chr. No.") %>%
+      set_names(nm=.[1,]) %>%
+      .[-1,] %>%
+      clean_names()
+    
+    #sample_name <- read_xlsx(input$sky_file$datapath) %>% names(.)[2]
+    #print(sample_name)
+    
+    return(s1)
+    
+  })
+  
+  s2R <- reactive({
+    if (is.null(s1R())) {
+      return(NULL)
+    }
+    category_s1 <- s1R() %>% filter(.[,1] == "Source") %>% 
+      gather(smpl, category, 2:ncol(.)) %>%
+      select(-cell)
+    
+    s2 <- s1R() %>% 
+      filter(.[,1] != "Source") %>%
+      mutate_at(vars(starts_with("x")), 
+                .funs = funs(ifelse(str_detect(., ","), 
+                                    str_split_fixed(., ",", n=2)[1,1], .))) %>%
+      mutate_at(vars(starts_with("x")), .funs = as.numeric) %>%
+      gather(key = smpl, value = num_chr, 2:ncol(.)) %>%
+      rename(chr = "cell") %>%
+      mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
+      left_join(category_s1, by="smpl") %>%
+      mutate(file_type = "sky") %>%
+      mutate(chr = factor(chr, levels=c(1:22, "X"))) %>%
+      .[ , order(names(.))]
+    #print(head(s2))
+    #print(head(calc_anca_score(s2)))
+    #print(list(g2R(), s2, f1R()) %>% compact())
+    return(s2)
+  })
+  
+ # test <- reactive({
+ #   print(g2R())
+ # })
+  
+  output$f1TestTable <- renderTable({
+   #tagList(head(s2R()), 
+   #        head(g2R()))
+   #        head(f1R()))
+    #head(calc_anca_score(s2R()))
+    #print(head(s2R()))
+    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
+    #
+    #tagList(
+    #  print(length(list_to_pass)),
+    #  head(calc_anca_score(s2R()))
+    #)
+  })
+  
+
   output$sumryStatsTbl <- DT::renderDataTable({
-    list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
+    list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
+    #print("class(s2R())")
+    #print(class(s2R()))
+    #return(DT::datatable(bind_rows(f1R())))
+    
+    #return(DT::datatable(bind_rows(f1R(), s2R(), g2R())))
+    #list_to_pass <- Filter(function(x) dim(x)[1] > 0, list(g2R(), s2R(), f1R()) )
     print("length(list_to_pass):")
     print(length(list_to_pass))
+    print(lapply(list_to_pass, head))
+    
     aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score)
     print(aneupl_scores)
     heterog_scores = purrr::map_df(.x = list_to_pass, .f = calc_heterog_score)
     anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score)
     sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores), full_join, by=c("category", "file_type")) 
+    print("head(sumStats)")
+    print(head(sumStats))
     return(DT::datatable(sumStats))
   })
   
-  output$sumryStatsTblPerChr <- DT::renderDataTable({
+  
+  stsTblPerChr <- reactive({
     list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
     aneupl_scores = purrr:::map_df(.x = list_to_pass, .f = calc_aneupl_score, retChr = TRUE)
     heterog_scores = purrr:::map_df(.x = list_to_pass, .f = calc_heterog_score, retChr = TRUE)
     anca_scores = purrr:::map_df(.x = list_to_pass, .f = calc_anca_score, retChr = TRUE)
     sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores), full_join, by=c("category","file_type", "chr")) 
-    return(DT::datatable(sumStats,       
+    print("head(sumStats), retChr=TRUE")
+    print(head(sumStats))
+    return(sumStats)
+  })
+  
+  output$sumryStatsTblPerChr <- DT::renderDataTable({
+    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
+    #aneupl_scores = purrr:::map_df(.x = list_to_pass, .f = calc_aneupl_score, retChr = TRUE)
+    #heterog_scores = purrr:::map_df(.x = list_to_pass, .f = calc_heterog_score, retChr = TRUE)
+    #anca_scores = purrr:::map_df(.x = list_to_pass, .f = calc_anca_score, retChr = TRUE)
+    #sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores), full_join, by=c("category","file_type", "chr")) 
+    DT::datatable(stsTblPerChr(),       
                          filter = list(position = 'top', clear = FALSE),
                          options = list(
-                           search = list(regex = TRUE, caseInsensitive = FALSE))))
+                           search = list(regex = TRUE, caseInsensitive = FALSE)))
   })
+  
+ #output$sumryStatsTblPerChr = downloadHandler('sumStatsTblPerChr-filt.csv', content = function(file) {
+ #  s = input$sumryStatsTblPerChr_rows_all
+ #  write.csv(stsTblPerChr()[s, , drop = FALSE], file)
+ #})
+  
   
   
 
