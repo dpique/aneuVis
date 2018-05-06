@@ -613,6 +613,30 @@ server <- shinyServer(function(input, output) {
               plot.margin=grid::unit(c(0,0,0,0), "mm"))
       return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
     })
+  
+  ### do the same for sky plots
+  s4R <- reactive({
+    s2_to_s4 <- s2R() %>% 
+      spread(chr, num_chr) %>%
+      group_by(category)  %>%
+      unite(colPaste, -category, -smpl, remove = FALSE) %>%
+      count(colPaste) %>%
+      mutate(prop = n / sum(n)) %>%
+      separate(colPaste, c(1:22, "X"), sep = "_") %>%
+      ungroup() %>%
+      mutate(category = paste(row_number(), category, sep="___")) %>%
+      gather(key = chr, value=chr_freq, 2:(ncol(.)-1)) %>%
+      mutate(chr= factor(chr, levels=c(1:22, "X", "n"))) %>%
+      mutate(chr_freq = as.numeric(chr_freq)) %>%
+      separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
+      mutate(row_numb=as.numeric(row_numb)) %>%
+      arrange(categ, row_numb) %>%
+      mutate(category = factor(category,levels=unique(category))) 
+    return(s2_to_s4)
+  })
+  
+  
+  
   #### adding permutation plots
   permsG2R <- reactive({
     nPerms <- 250
