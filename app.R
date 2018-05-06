@@ -4,7 +4,7 @@ library(tidyverse)
 library(here)
 library(janitor)
 library(ggtern)
-
+#library(DT)
 source("scripts/helper_scripts.R")
 
 
@@ -15,8 +15,8 @@ max_plots <- 50 # *maximum* total number of plots
 ui <- navbarPage(
   title = "aneuvis",
   theme = shinythemes::shinytheme("spacelab"), #shinythemes::themeSelector(), #, #shinyshinytheme("united"),
-  tabPanel("Home",
-           p("Aneuvis is a web tool for analyzing chromosomal number variation in single cells."),
+  tabPanel("Home",  icon = icon("home"),
+           h3("Aneuvis is a web tool for analyzing chromosomal number variation in single cells."),
            p("The three types of single-cell chromosomal data that can be uploaded into aneuvis are"),
              tags$ol(
                tags$li(tags$a(target = "_blank", 
@@ -29,24 +29,30 @@ ui <- navbarPage(
                               href = "https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3254861/", 
                               "Spectral karyotyping (SKY)"), "- analyze chromosome counts and structural variation from all chromosomes.")
              ),
-           p("The output from aneuvis is divided into 3 parts: Visualization, Table summary, and Comparative statistics"),
-           p("Below we have a video tutorial for how to use aneuvis.")),
-  tabPanel("Documentation",
+           p("The output from aneuvis is divided into 2 parts: Table Summary and Visualization"),
+           p("See the image below for an overview of Aneuvis"),
+           h3("Do treatments A and B induce aneuploidy?"),
+           img(src="aneuvis_layout.png", width=700),
+           p("Watch the tutorial below to get started.")),
+  tabPanel("Documentation", icon=icon("book"),
            #sidebarLayout( #shinythemes::themeSelector(),
            #theme = shinythemes::shinytheme("spacelab"),
            #titlePanel("aneuvis v.0.4"),
            #tabPanel(
-           radioButtons(
-             inputId = "rb",
-             label = "1. Select data type:",
-             c(
-               "2, 3, or 4-chromosome FISH" = "fish2",
-               "Ginkgo: Single-cell CNV" = "ginkgo",
-               "SKY" = "sky"
-             )
-           )
+           p("Aneuvis is a product of a collaboration between the",tags$a(target = "_blank", 
+                                                                          href = "http://www.einstein.yu.edu/faculty/9868/cristina-montagna/", 
+                                                                          "Montagna"), "(aneuploidy and cytogenetics) and", tags$a(target = "_blank", 
+                                                                                                                                   href = "http://www.einstein.yu.edu/faculty/12990/jessica-mar/", 
+                                                                                                                                   "Mar"), "(computational biology) labs at Albert Einstein College of Medicine."),
+           p("All source code is available on github."),
+           p("Aneuvis was created using Shiny version 1.0.5 (R version 3.4.3) and is available under a GPLv3 license"),
+           p("Please contact daniel.pique@med.einstein.yu.edu with any questions."),
+           hr(),
+           h3("FAQ")
+           
   ),
-  navbarMenu("Upload Data",
+  tabPanel("Upload Data", icon=icon("upload"),
+           tabsetPanel(
              tabPanel("FISH",
                       h3("Upload fluorescence in situ hybridization (FISH) data"),
                       fileInput(
@@ -62,6 +68,9 @@ ui <- navbarPage(
                       
                       img(src="fish_layout_excel.png", width=300),
                       p("Multiple excel files, each with the same # of chromosomes, can be uploaded. Each file will be treated as a separate 'condition'."),
+                      hr(),
+                      h3("Download example data"),
+                        
                       p("Download example 2-chromosome FISH data ", 
                         tags$a(target = "_blank", 
                                href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxaigjiFmba", "here"), 
@@ -109,7 +118,7 @@ ui <- navbarPage(
                       ), 
                       actionButton("submit_sky", "Submit"),
                       hr(),
-                      p("The format of a sky file is shown below."),
+                      h3("SKY file structure guide"),
                       img(src="sky_layout.png", width=400),
                       p("Multiple SKY copy number file can be uploaded at a time."),
                       p("Download example SKY data", 
@@ -117,25 +126,72 @@ ui <- navbarPage(
                                href="http://qb.cshl.edu/ginkgo/uploads/_t10breast_navin/SegCopy?uniq=1210441", "here")),
                       p("Access a list of ISCN chromosomal abberation symbols", 
                         tags$a(target = "_blank", 
-                               href="https://cgap.nci.nih.gov/Chromosomes/ISCNSymbols", "here")))),
+                               href="https://cgap.nci.nih.gov/Chromosomes/ISCNSymbols", "here"))))),
  
-
-  tabPanel("Visualizations"),
-  tabPanel("Table Summary",
+  tabPanel("Table Summary", icon = icon("table"),
                      p("The table below gives the weighted average copy number rounded to the nearest integer per chromosome per sample."),
                      p("A 'wide' table of this data is available for download, with chromosomes as columns and samples as rows."),
                      downloadButton("g2T.d", "Download"),
                      #tableOutput("g2T"),
           hr(),
            #DT::dataTableOutput("g2T"),
-          tableOutput("f1TestTable"),
+          #tableOutput("f1TestTable"),
           tabsetPanel(
             id = 'dataset',
             tabPanel("sc-wgs summary", DT::dataTableOutput("g2T")),
             tabPanel("Stats Per Treatment", DT::dataTableOutput("sumryStatsTbl")),
             tabPanel("Stats Per Treatment & Chromosome", DT::dataTableOutput("sumryStatsTblPerChr"))
-          )),
-          
+          ), 
+          hr(),
+          p("Each row in this table represents
+            a different file that was uploaded. The columns represent the following:",
+            
+            tags$ul(
+              tags$li(
+                "Columns labeled diploid, polyploid, and aneuploid represent the proportion of cells 
+                in that state per treatment."
+              ),
+              tags$li(
+                
+                "The column labeled (n) represents the total number of cells or chromosomes analyzed within the file."
+              ),
+              tags$li(
+                "The average number of copy alterations per group (anca_score) was calculated as in",
+                tags$a(target = "_blank", href = "https://www.ncbi.nlm.nih.gov/pubmed/12775914", "Blegen et al 2003")
+              ),
+              tags$li(
+                "The aneuploidy and heterogeneity scores were calculated as in",
+                tags$a(
+                  target = "_blank",
+                  href = "https://www.ncbi.nlm.nih.gov/pubmed/27246460",
+                  "Bakker et al 2016 (Suppl.Methods & Table S2)"
+                )
+              )
+          ))),
+  tabPanel("Visualization", icon = icon("bar-chart-o"), 
+           tabsetPanel(
+             tabPanel("FISH", uiOutput("gridPlots")),
+             tabPanel("sc-WGS"),
+             tabPanel("SKY"),
+             tabPanel("Copy Number Heatmap", plotOutput("chrHeatG2")),
+             tabPanel("Scores by Group",
+                      h3("Scatterplot of Aneuploidy and Heterogeneity Score by Group"),
+                      plotOutput("aneuHeteroSctrPlt"),
+                      hr(),
+                      plotOutput("ternPlot"),
+                      hr(),
+                      p("Ternary plots are used to represent proportions of 3 groups that sum to 1"),
+                      p("T = Proportion of Diploid cells"),
+                      p("L = Proportion of Aneuploid cells"),
+                      p("R = Proportion of Polyploid cells"),
+                      p("Position of each point represents the proportion of cells within each group.
+                        For example, a point near 'T' would mean that most of the cells within that group
+                        are diploid.")),
+             tabPanel("Scores by Group & Chromosome",
+                      plotOutput("aneuHeteroSctrPltPerChr")
+             ),
+             tabPanel("Permutations", tableOutput("testTable"), plotOutput("permPlotg2R"))
+           )),
           #h2("Summary Stats per Treatment"),
           #tableOutput("sumryStatsTbl"),
           #h2("Summary Stats per Treatment and Chromosome"),
@@ -424,28 +480,20 @@ server <- shinyServer(function(input, output) {
   })
   
 
-  output$sumryStatsTbl <- DT::renderDataTable({
+  stsTbl <- reactive({
     list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
-    #print("class(s2R())")
-    #print(class(s2R()))
-    #return(DT::datatable(bind_rows(f1R())))
-    
-    #return(DT::datatable(bind_rows(f1R(), s2R(), g2R())))
-    #list_to_pass <- Filter(function(x) dim(x)[1] > 0, list(g2R(), s2R(), f1R()) )
-    print("length(list_to_pass):")
-    print(length(list_to_pass))
-    print(lapply(list_to_pass, head))
-    
     aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score)
     print(aneupl_scores)
     heterog_scores = purrr::map_df(.x = list_to_pass, .f = calc_heterog_score)
     anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score)
-    sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores), full_join, by=c("category", "file_type")) 
-    print("head(sumStats)")
-    print(head(sumStats))
-    return(DT::datatable(sumStats))
+    perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy)
+    sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores, perc_ploidy), full_join, by=c("category", "file_type")) 
+    return(sumStats)
   })
   
+  output$sumryStatsTbl <- DT::renderDataTable({
+    DT::datatable(stsTbl()) %>% DT::formatRound(c(2, 4:5, 7:9), 2)
+  })
   
   stsTblPerChr <- reactive({
     list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
@@ -453,21 +501,15 @@ server <- shinyServer(function(input, output) {
     heterog_scores = purrr:::map_df(.x = list_to_pass, .f = calc_heterog_score, retChr = TRUE)
     anca_scores = purrr:::map_df(.x = list_to_pass, .f = calc_anca_score, retChr = TRUE)
     sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores), full_join, by=c("category","file_type", "chr")) 
-    print("head(sumStats), retChr=TRUE")
-    print(head(sumStats))
     return(sumStats)
   })
   
   output$sumryStatsTblPerChr <- DT::renderDataTable({
-    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
-    #aneupl_scores = purrr:::map_df(.x = list_to_pass, .f = calc_aneupl_score, retChr = TRUE)
-    #heterog_scores = purrr:::map_df(.x = list_to_pass, .f = calc_heterog_score, retChr = TRUE)
-    #anca_scores = purrr:::map_df(.x = list_to_pass, .f = calc_anca_score, retChr = TRUE)
-    #sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores), full_join, by=c("category","file_type", "chr")) 
     DT::datatable(stsTblPerChr(),       
                          filter = list(position = 'top', clear = FALSE),
                          options = list(
-                           search = list(regex = TRUE, caseInsensitive = FALSE)))
+                           search = list(regex = TRUE, caseInsensitive = FALSE))) %>%
+    DT::formatRound(c(3,5,6), 2)
   })
   
  #output$sumryStatsTblPerChr = downloadHandler('sumStatsTblPerChr-filt.csv', content = function(file) {
@@ -475,7 +517,245 @@ server <- shinyServer(function(input, output) {
  #  write.csv(stsTblPerChr()[s, , drop = FALSE], file)
  #})
   
+  ### Adding ternary plots
   
+  
+  output$ternPlot <- renderPlot({
+    p <- ggtern() + 
+      geom_point(data=stsTbl(), 
+                 aes(x = aneuploid,y=diploid,z=polyploid,
+                     fill = paste0(file_type, ": ",category)),#, label=file_type), 
+                 size = 3, alpha = 0.4, pch= 21, color = "black", stroke = 1) + 
+      xlab("") + ylab("") +
+      Tlab("Diploid") +
+      Llab("Aneuploid") +
+      Rlab("Polyploid") +
+      guides(fill=guide_legend(title="Legend")) +
+      #xlab("Aneuploid   Polyploid") + ylab("") +
+      #scale_x_discrete(position = "top") +
+      limit_tern(1.03,1.03,1.03) 
+    return(p)
+    #NULL
+  })
+  
+ #difficult to make ternplot per chromosome 
+ 
+  
+  #### 2018-05-06 adding scatterplots for heterogeneity and aneuploidy scores
+  output$aneuHeteroSctrPlt <- renderPlot({
+    p <- ggplot(stsTbl(), aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+                              fill = category, shape=file_type)) + 
+      geom_point(pch=21, size=4, stroke = 1, alpha=0.4) + theme_classic() +
+      coord_fixed(ratio = 1)
+      
+    return(p)
+    #NULL
+  })
+  
+  output$aneuHeteroSctrPltPerChr <- renderPlot({
+    p <- ggplot(stsTblPerChr(), aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+                              color = chr, shape=category)) + 
+      geom_point(size=3) + theme_classic() +
+      coord_fixed(ratio = 1)
+      #scale_size_manual(values = scale_size_manual())
+    
+    return(p)
+    #NULL
+  })
+  
+  ##### 2018-05-06 adding heatmaps
+  g4R <- reactive({
+    g2_to_g4 <- g2R() %>% 
+      spread(chr, num_chr) %>%
+      group_by(category)  %>%
+      unite(colPaste, -category, -smpl, remove = FALSE) %>%
+      count(colPaste) %>%
+      mutate(prop = n / sum(n)) %>%
+      separate(colPaste, c(1:22, "X"), sep = "_") %>%
+      ungroup() %>%
+      mutate(category = paste(row_number(), category, sep="___")) %>%
+      gather(key = chr, value=chr_freq, 2:(ncol(.)-1)) %>%
+      mutate(chr= factor(chr, levels=c(1:22, "X", "n"))) %>%
+      mutate(chr_freq = as.numeric(chr_freq)) %>%
+      separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
+      mutate(row_numb=as.numeric(row_numb)) %>%
+      arrange(categ, row_numb) %>%
+      mutate(category = factor(category,levels=unique(category))) 
+      return(g2_to_g4)
+  })
+  
+  output$chrHeatG2 <- renderPlot({
+      g4.1 <- ggplot(filter(g4R(), chr %in% c(1:22,"X")), aes(x=chr, y=category, 
+                                                              fill=factor(chr_freq, levels=sort(unique(chr_freq))))) + 
+        geom_tile(color = "white", size = 1) + 
+        scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
+        theme_classic() + theme(axis.ticks = element_blank(),
+                                axis.line = element_blank(),
+                                axis.text.x = element_text(size= 8),
+                                axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+        #coord_fixed(ratio = 1) + 
+        xlab("Chromosome") + ylab("")+ 
+        theme(legend.position="left", 
+              plot.margin=grid::unit(c(0,0,0,0), "mm"),
+              aspect.ratio=1)
+      
+      g4.2 <- ggplot(filter(g4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
+        geom_tile(color = "white", size = 1) + 
+        scale_fill_gradient(low = "white", high = "black" ) +
+        theme_classic() + theme(axis.ticks = element_blank(),
+                                axis.line = element_blank(),
+                                axis.text.x = element_text(size= 8),
+                                axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+        coord_fixed(ratio = 1) + 
+        xlab("n") + ylab("") + 
+        scale_y_discrete(position = "right") + 
+        theme(legend.position="right", 
+              plot.margin=grid::unit(c(0,0,0,0), "mm"))
+      return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
+    })
+  #### adding permutation plots
+  permsG2R <- reactive({
+    nPerms <- 250
+    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
+    fxn <- calc_anca_score #calc_heterog_score#calc_aneupl_score
+    g2r_perm_df = retPermPlotDf(input_df = g2R(), fxn, nPerms = nPerms)
+    return(g2r_perm_df)
+    #lapply(list_to_pass, function(x) retPermPlotDf(x, fxn)) #input_df <- g2R()
+  })
+  
+  
+  output$testTable <- renderTable({
+    permsG2R()
+  })
+  
+  output$permPlotg2R <- renderPlot({
+    colorRedBlue <- RColorBrewer::brewer.pal(n = 11, name = "RdBu")
+    ggplot(permsG2R(), aes(x=V1, y=V2, fill=pval_cut)) + 
+      geom_tile() + 
+      scale_fill_manual(values = colorRedBlue[c(3:9)], drop=FALSE) +
+      geom_tile(color = "white", size = 1) + #scale_fill_distiller(direction = 1) +
+      geom_text(aes(label=round(pvalue, 3))) +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
+    })
+
+  
+  #########adding FISH bivariate plots 2018-05-05
+  classes <- reactive({unique(f1R()$category)})
+  #fileinput: 'name', 'size', 'type' and 'datapath'.
+  file_names <- reactive({input$fish_files$name})
+  
+  output$gridPlots <- renderUI({
+    nchrs <- length(unique(f1R()$chr))#f1R() %>% ncol(.) - 2
+    chr_pairs <- combn(1:nchrs, 2)
+    
+    cl_ln <- length(unique(f1R()$category))
+    plot_output_list <- lapply(1:(cl_ln*ncol(chr_pairs)), function(i) {
+      plotname <- paste("plot", i, sep="")
+      plotOutput(plotname, height = 450, width = 450)
+    })
+    #create a tagList of all plots
+    do.call(tagList, plot_output_list)
+  })
+  
+  
+  all_combos_chr_pairs_and_classes <- reactive({
+    nchrs <- length(unique(f1R()$chr)) #f1R() %>% ncol(.) - 2
+    chr_pairs <- combn(1:nchrs, 2)
+    classes <- unique(f1R()$category)
+    expand.grid(1:ncol(chr_pairs),1:length(classes))
+  })
+  
+  f4Plot <- reactive({
+    f4 <- f1R() %>% 
+      select(-file_type) %>% 
+      spread(chr, num_chr) %>% 
+      select(-smpl,smpl) #move this column to the end
+
+    print(head(f4))
+    return(f4)
+  })
+  
+  for (i in 1:max_plots) {
+    local({
+      my_i <- i
+      plotname <- paste("plot", my_i, sep="")
+      
+      output[[plotname]] <- renderPlot({
+        
+        classes <- unique(f1R()$category)
+        file_names <- input$fish_files$name #input$fish_files$name})
+        
+        maxChr <- 8
+        maxChrPlus1 = maxChr + 1
+        nchrs <-  length(unique(f1R()$chr))
+        chr_pairs <- combn(1:nchrs, 2)
+        
+        #print("my_i")
+        #print(my_i)
+        #
+        #print("head(f4Plot())")
+        #print(head(f4Plot()))
+        #print("chr_pairs[,all_combos_chr_pairs_and_classes()[my_i,1]]+1")
+        #print(chr_pairs[,all_combos_chr_pairs_and_classes()[my_i,1]]+1)
+        #print("all_combos_chr_pairs_and_classes()[my_i,1]")
+        #print(all_combos_chr_pairs_and_classes()[my_i,1])
+ 
+    
+        f1R.t2 <- f4Plot() %>% select(c(1, chr_pairs[,all_combos_chr_pairs_and_classes()[my_i,1]]+1), ncol(.))
+        print("head(f1R.t2)")
+        print(head(f1R.t2))
+        #  for (ea_class in 1:length(classes)){
+        
+        matr_plot <- return_chr_prop_matr2(f1R.t2,classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
+                                          maxPair = maxChrPlus1)
+        print("matr_plot")
+        print(matr_plot)
+        x_y_axis_lab <- colnames(matr_plot)[4:5]
+        print("x_y_axis_lab")
+        print(x_y_axis_lab)
+        
+        plt <- create_perc_matr2(matr_plot, title = classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
+                                 minChr = 1, 
+                                 maxChr = maxChrPlus1, xlab = x_y_axis_lab[1], ylab=x_y_axis_lab[2])
+        return(plt)
+        
+      })
+    })
+  }
+  
+  
+  
+#  output$gridPlots2 <- renderPlot({
+#    classes <- unique(f1R()$category)
+#    file_names <- input$fish_files$name #input$fish_files$name})
+#    
+#    maxChr <- 8
+#    maxChrPlus1 = maxChr + 1
+#    nchrs <-3 # length(unique(f1R()$chr))# %>% ncol(.) - 3
+#    chr_pairs <- combn(1:nchrs, 2)
+#    f2 <- f1R() %>% spread(chr, num_chr)
+#    plot_list <- list()
+#    for(ea_chr_pair in 1:ncol(chr_pairs)){
+#      f1R.t2 <- f2 %>% select(c(1, chr_pairs[,ea_chr_pair]+1))
+#      
+#      for (ea_class in 1:length(classes)){
+#        matr_plot <- return_chr_prop_matr(f1R.t2,classes[ea_class], maxPair = maxChrPlus1)
+#        plt <- create_perc_matr2(matr_plot, title = classes[ea_class], minChr = 1, 
+#                                 maxChr = maxChrPlus1, xlab = "", ylab="")
+#        #save plotted object
+#        plot_list[[ea_class + (length(classes)*(ea_chr_pair - 1))]] <- plt
+#        
+#      }
+#    }
+#    #plot_list.arr <- grid.arrange(grobs = plot_list, ncol = ncol(chr_pairs)) ## display plot
+#    plot_list.arr <- grid.arrange(grobs = plot_list, ncol =1) ## display plot
+#    
+#    return(plot_list.arr)
+#  })
   
 
 })

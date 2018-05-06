@@ -35,6 +35,36 @@ return_chr_prop_matr <- function(chromosomes, ltr, maxPair){
 }
 
 
+return_chr_prop_matr2 <- function(chromosomes, ltr, maxPair){
+  
+  #maxPair = maxChrPlus1
+  #chromosomes = f1R.t %>% select(1:3, 6)#f1R.t2
+  #ltr = classes[1]
+  temp_col_names <- colnames(chromosomes)
+  colnames(chromosomes)[2:3] <- paste0("chr", temp_col_names[2:3])
+  
+  all_perms = as.data.frame(gtools::permutations(maxPair, 2, repeats.allowed = T)) %>%
+    mutate(chrPaste=paste0(V1, V2))
+  #chromosomes <- aneuDat_test %>% rename(clss=class)
+  #ltr <- "test_aneupl_file_2.xlsx"
+  chromosomes2 <- chromosomes %>%
+    filter(category == ltr) %>%
+    mutate_at(2:3, .funs = ~ifelse(. > maxPair, maxPair, .)) %>%
+    group_by_(as.character(colnames(.)[2]), as.character(colnames(.)[3])) %>%
+    count() %>%
+    ungroup() %>%
+    mutate(prop = n/sum(n), 
+           prop.r =  round(prop*100, 1)) %>%
+    unite(col = chrPaste, 1:2, sep = "",remove = FALSE) %>%
+    left_join(all_perms, ., by="chrPaste") %>%
+    mutate(prop.r.cl = ifelse(is.na(prop.r), "·", as.character(prop.r))) %>%
+    replace(is.na(.), 0)
+  return(chromosomes2)
+}
+
+
+
+
 create_perc_matr2 <- function(matr, title, minChr, maxChr, xlab, ylab){
   tot= sum(matr$n)
   gridSize <- maxChr - minChr + 1
@@ -269,3 +299,117 @@ calc_anca_score <-  function(chr_tbl, retChr = FALSE) {
     select(category, anca_score_blegen, file_type) #%>%
     #mutate(categ_file_type = paste0(category, "_",file_type))
 }
+
+
+calc_perc_ploidy <-  function(chr_tbl) {
+  cat_file_type <- chr_tbl %>% 
+    select(category, file_type) %>% 
+    distinct()
+  
+  chr_tbl %>%
+    spread(chr, num_chr) %>% 
+    mutate(ploidy =  apply(.[,4:ncol(.)], 1, classifPloidy)) %>% 
+    select(category, ploidy, file_type) %>% 
+    mutate(ploidy = factor(ploidy, levels=c("diploid", "polyploid", "aneuploid"))) %>%
+    group_by(category, ploidy) %>% 
+    summarize(n=n()) %>% 
+    mutate(freq=n/sum(n)) %>%
+    tidyr::complete(ploidy, fill = list(n = 0, freq=0))%>%
+    left_join(cat_file_type, by="category") %>%
+    select(-n) %>%
+    spread(ploidy, freq)
+}
+
+
+##########
+#functions for permutation
+pvalFxn <- function(val, nPerm){
+  if(val > nPerm/2){
+    #pval = 2 * (nPerm - val + 1)/ nPerm
+    pval = 2 * (nPerm - val)/ nPerm + 1/nPerm
+    return(pval)
+  } else if(val < nPerm/2){
+    #pval = (2 * (val + 1)) / nPerm
+    pval = (2*val) / nPerm + 1/nPerm
+    return(pval)
+  } else{
+    return(1)
+  }
+}
+
+
+retPermPlotDf <- function(input_df, fxn, nPerms){
+  
+  obs_dist <- shufRetDist(input_df, fxn, perm=FALSE)
+  
+  shuf_dists_aneupl <- lapply(1:nPerms, function(x) shufRetDist(input_df, fxn)) %>%
+    lapply(function(x) x > obs_dist) %>%
+    reduce(`+`) %>%
+    as_tibble()
+  
+  colorRedBlue <- RColorBrewer::brewer.pal(n = 11, name = "RdBu")
+  brk_lbls = c(">0.05", "<0.05", "<0.01", "<0.001", "0", ">0.05", "<0.05", "<0.01", "<0.001")##">0.001", "")
+  categs <- as_tibble(t(combn(x = unique(input_df$category), m = 2))) %>% 
+    bind_cols(shuf_dists_aneupl) %>%
+    mutate(pvalue = sapply(value, pvalFxn, nPerms),
+           sim1diffneg1 = ifelse(value > nPerms /2, 1,-1),
+           pvalPosNeg = pvalue * sim1diffneg1) %>%
+    mutate(pval_cut = cut(pvalPosNeg, 
+                          breaks = c(-1, -0.05, -0.01, -0.001, -1e-16, 1e-16, 0.001, 0.01, 0.05, 1)),
+           pval_cut = fct_collapse(pval_cut, ">0.05" = c("(-1,-0.05]", "(0.05,1]") ),
+           pval_cut = fct_drop(pval_cut, only = "(-1e-16,1e-16]"),
+           pval_cut = factor(pval_cut, levels = levels(pval_cut)[c(4:1,7:5)]))
+  return(categs)
+}
+
+
+
+
+
+shufRetDist <- function(matr, fxn, perm = TRUE){
+  if(perm == TRUE){
+    matr2 <- matr %>% 
+      spread(chr, num_chr) %>% 
+      mutate(category = sample(category)) %>%
+      gather("chr", "num_chr", 4:ncol(.))
+    matr_shuf <- matr2 %>% 
+      mutate(num_chr = sample(num_chr), file_type = "sc-wgs") %>% 
+      fxn
+  } else {
+    matr_shuf <- matr %>% mutate(file_type = "sc-wgs") %>% fxn #calc_aneupl_score()
+  }
+  #dist(matr_shuf$aneupl_score_bakker)
+  matr_shuf %>% ungroup() %>% select(contains("score")) %>% dist()
+}
+
+
+shufRetDist2 <- function(matr, fxn, perm = TRUE){
+  #do not use this function - 2018-05-06 12:30 pm
+  if(perm == TRUE){
+    fxn = list(calc_aneupl_score, calc_heterog_score, calc_perc_ploidy)
+    matr = g2
+    matr_shuf <- matr %>% 
+      mutate(num_chr = sample(num_chr), file_type = "sc-wgs") #%>% fxn
+    
+    #a <- calc_aneupl_score(matr_shuf)
+    #h <- calc_heterog_score(matr_shuf)
+    #p <- calc_perc_ploidy(matr_shuf)
+    #func <- list(runif, rnorm) 
+    #  invoke(.f = fxn[[1]], matr_shuf)
+    #  #sapply(fxn, . %>%  sapply(., .))
+    #lapply(X = fxn, FUN = function(x) x(matr_shuf))
+    #sapply(fxn, . %>%  sapply(matr_shuf, .))
+    #
+    #
+    #  map_df(~invoke_map(fxn, ,.), .id="id")
+    #
+    #funs <- list(sd=sd, mean=mean)
+    #trees %>% map_df(~invoke_map(funs, ,.), .id="id")
+    
+    map_df(~invoke_map(fxn, ,.), id="id") 
+  } else {
+    matr_shuf <- matr %>% mutate(file_type = "sc-wgs") %>% fxn #calc_aneupl_score()
+  }
+  matr_shuf %>% ungroup() %>% select(contains("score")) %>% dist()
+}
+
