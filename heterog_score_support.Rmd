@@ -1,0 +1,38 @@
+---
+title: "Upper limit of heterogeneity score"
+author: "Daniel Pique"
+date: "May 9, 2018"
+output: html_document
+---
+
+```{r}
+
+T <- 1
+N <- 5
+dat <- N:1
+mft <- (0:(length(dat)-1))
+sum(dat * mft)/(T*N)
+
+
+T <- 1
+N <- 6
+dat <- N:1
+mft <- (0:(length(dat)-1))
+sum(dat * mft)/(T*N)
+
+T <- 1
+N <- 7
+dat <- N:1
+mft <- (0:(length(dat)-1))
+sum(dat * mft)/(T*N)
+
+heterog_score_1bin <- function(N){
+  T <- 1
+  dat <- N:1
+  mft <- (0:(length(dat)-1))
+  sum(dat * mft)/(T*N)
+}
+heterog_scores <- sapply(1:100, heterog_score_1bin)
+plot(heterog_scores, 1:100)
+```
+

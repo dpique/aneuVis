@@ -9,3 +9,6 @@ Resources for learning shiny:
 "Shiny will pass a validation error to any reactive expression or observer object that depends on it". How do we "catch" these validation errors in code?? Is there something we can do to "detect" these errors (ie does it equal something?)
  
 ignoreNULL = FALSE,
+
+Validate(need()) - returns an error
+Column names - shouldnt begin with a number - can mess up the dplyr group_by  functions

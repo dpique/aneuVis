@@ -86,6 +86,34 @@ create_perc_matr2 <- function(matr, title, minChr, maxChr, xlab, ylab){
   return(x)
 }
 
+
+create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
+  tot <- sum(matr$n)
+  gridSize <- maxChr - minChr + 1
+  x <- ggplot(matr, aes(x = V1, y = V2, fill = log(prop*100+1, 10))) + 
+    geom_tile(color = "black") +  
+    theme_classic() +
+    theme(axis.text=element_text(size=19, colour = "black", 
+                                 face = c("plain", "bold", rep("plain", 7))), 
+          axis.line = element_blank(), axis.ticks = element_blank(),
+          legend.text=element_text(size=12)) +
+          #legend.position="none") +
+    scale_fill_gradient(low = "white", high = "firebrick3", limits = c(0,log(100+1, base = 10)),
+                        breaks = c(0,log(c(11, 101), base = 10)),#1,log(100+1, base = 10)),
+                        labels = c(0, 10, 100),
+                        name = "Percentage") + 
+    geom_text(size = 4.5, aes(label = prop.r.cl)) + 
+    coord_fixed() +
+    xlab(xlab) + 
+    ylab(ylab) + 
+    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
+    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
+    ggtitle(paste0("% aneuploidy across ", tot, " observations\nfile: ", title))
+  #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
+  return(x)
+}
+
+
  
 create_perc_matr3 <- function(matr, title, minChr, maxChr, xlab, ylab){
   tot= sum(matr$n)
@@ -372,14 +400,11 @@ shufRetDist <- function(matr, fxn, perm = TRUE){
       spread(chr, num_chr) %>% 
       mutate(category = sample(category)) %>%
       gather("chr", "num_chr", 4:ncol(.))
-    matr_shuf <- matr2 %>% 
-      mutate(num_chr = sample(num_chr), file_type = "sc-wgs") %>% 
-      fxn
+    matr3 <- matr2 %>% fxn
   } else {
-    matr_shuf <- matr %>% mutate(file_type = "sc-wgs") %>% fxn #calc_aneupl_score()
+    matr3 <- matr %>% fxn
   }
-  #dist(matr_shuf$aneupl_score_bakker)
-  matr_shuf %>% ungroup() %>% select(contains("score")) %>% dist()
+  matr3 %>% ungroup() %>% select(contains("score")) %>% dist()
 }
 
 
@@ -413,3 +438,69 @@ shufRetDist2 <- function(matr, fxn, perm = TRUE){
   matr_shuf %>% ungroup() %>% select(contains("score")) %>% dist()
 }
 
+
+
+######## shiny modules 2018-05-12 #####
+
+permPlotUI <- function(id) {
+  ns <- NS(id)
+  
+  fluidRow(
+    column(6, tableOutput(ns("perm_table"))),
+    column(6, plotOutput(ns("perm_plot")))
+  )
+}
+
+
+
+permPlot <- function(input, output, session, file_input, input_df, fxn, nPerms) {
+  #add file_type for validate
+  # Yields the data frame with an additional column "selected_"
+  # that indicates whether that observation is brushed
+  
+  perms <- reactive({
+    validate(
+      need(!is.null(file_input), 'Please upload at least 1  file.')
+    ) 
+    
+    #nPerms <- 250
+    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
+    #fxn <- fxn #calc_anca_score #calc_heterog_score#calc_aneupl_score
+    f1r_perm_df = retPermPlotDf(input_df = input_df, fxn, nPerms = nPerms)
+    return(f1r_perm_df)
+    #lapply(list_to_pass, function(x) retPermPlotDf(x, fxn)) #input_df <- g2R()
+  })
+  
+  
+  output$permTbl <- renderTable({
+    perms()
+  })
+  
+  output$permPlot <- renderPlot({
+    colorRedBlue <- RColorBrewer::brewer.pal(n = 11, name = "RdBu")
+    ggplot(perms(), aes(x=V1, y=V2, fill=pval_cut)) + 
+      geom_tile() + 
+      scale_fill_manual(values = colorRedBlue[c(3:9)], drop=FALSE) +
+      geom_tile(color = "white", size = 1) + #scale_fill_distiller(direction = 1) +
+      geom_text(aes(label=round(pvalue, 3))) +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
+  })
+  
+  dataWithSelection <- reactive({
+    brushedPoints(data(), input$brush, allRows = TRUE)
+  })
+  
+  output$plot1 <- renderPlot({
+    scatterPlot(dataWithSelection(), left())
+  })
+  
+  output$plot2 <- renderPlot({
+    scatterPlot(dataWithSelection(), right())
+  })
+  
+  return(dataWithSelection)
+}

@@ -9,14 +9,16 @@ library(shinycustomloader)
 #library(DT)
 source("scripts/helper_scripts.R")
 
-
-
-
 max_plots <- 50 # *maximum* total number of plots
 
-ui <- navbarPage(
+ui <- tagList(shinyjs::useShinyjs(), 
+              withMathJax(), 
+              navbarPage(
   title = "aneuvis 0.5",
-  theme = shinythemes::shinytheme("spacelab"), #shinythemes::themeSelector(), #, #shinyshinytheme("united"),
+  
+  theme = shinythemes::shinytheme("spacelab"),
+  id = "inTabset",
+  
   tabPanel("Home",  icon = icon("home"),
            h3("Aneuvis is a web tool for analyzing chromosomal number variation in single cells."),
            p("The three types of single-cell chromosomal data that can be uploaded into aneuvis are"),
@@ -37,26 +39,32 @@ ui <- navbarPage(
            img(src="aneuvis_layout.png", width=700),
            p("Watch the tutorial below to get started. (forthcoming)")),
   tabPanel("Documentation", icon=icon("book"),
-           #sidebarLayout( #shinythemes::themeSelector(),
-           #theme = shinythemes::shinytheme("spacelab"),
-           #titlePanel("aneuvis v.0.4"),
-           #tabPanel(
-           p("Aneuvis is the product of a collaboration between the",tags$a(target = "_blank", 
-                                                                          href = "http://www.einstein.yu.edu/faculty/9868/cristina-montagna/", 
-                                                                          "Montagna"), "(aneuploidy and cytogenetics) and", tags$a(target = "_blank", 
-                                                                                                                                   href = "http://www.einstein.yu.edu/faculty/12990/jessica-mar/", 
-                                                                                                                                   "Mar"), "(computational biology) labs at Albert Einstein College of Medicine."),
-           
+           p("Aneuvis is the product of a collaboration between the",
+             tags$a(target = "_blank", 
+                    href = "http://www.einstein.yu.edu/faculty/9868/cristina-montagna/", 
+                    "Montagna"), "(aneuploidy and cytogenetics) and", 
+             tags$a(target = "_blank", 
+                    href = "http://www.einstein.yu.edu/faculty/12990/jessica-mar/", 
+                    "Mar"), "(computational biology) labs at Albert Einstein College of Medicine."),
            p("All source code is available on github."),
            p("Aneuvis was created using", tags$a(target = "_blank", 
                                                 href = "http://shiny.rstudio.com/", 
                                                 "Shiny"), "version 1.0.5 (R version 3.4.3) and is available under a GPLv3 license"),
            p("Please contact daniel.pique@med.einstein.yu.edu with any questions."),
            hr(),
-           h3("FAQ")
+           h3("FAQ"),
+           tags$ol(
+             tags$li(tags$b("I am trying to upload multiple FISH files in excel and I get an error. What should I do?")),
+             tags$ul("Try checking the column names in the excel files to make sure they are the same between all files."),
+             tags$li(tags$b("I am trying to upload an excel file and I get an error that looks like this:")), 
+             img(src="error_1.png", width=200),
+             tags$ul("This could be an issue with the file encoding. Try opening the file and saving it (using 'Save As...') with the same file name (without modifying the file). Then, try re-uploading the file into aneuvis."),
+             tags$li(tags$b("I have an idea to improve aneuvis. How should I share this?")),
+             tags$ul("Email me (daniel.pique@med.einstein.yu.edu) with any suggestions. You can also open an issue on Github or submit a pull request.")
+           )
            
   ),
-  tabPanel("Upload Data", icon=icon("upload"),
+  tabPanel("Upload Data", icon=icon("upload"), value = "uploadTab",
            tabsetPanel(
              tabPanel("FISH",
                       h3("Upload fluorescence in situ hybridization (FISH) data"),
@@ -66,19 +74,22 @@ ui <- navbarPage(
                                 multiple = TRUE,
                                 accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv")
                               ),
-                      actionButton("submit_fish", "Submit"),
+                      actionButton("submit_fish", "Submit and Go to Table Summary"),
                       hr(),
                       # p("The structure of an Excel file containing FISH data is shown below."),
                       h3("FISH file structure guide"),
                       
                       img(src="fish_layout_excel.png", width=300),
-                      p("Multiple excel files, each with the same # of chromosomes, can be uploaded. Each file will be treated as a separate 'condition'."),
+                      p("Multiple excel files, each with the same # of chromosomes, can be uploaded."),
+                      p("All files *must* have same column names in row 1. Ex. Chr17 and Chr 17 are differnt"), 
+                      p("Each file will be treated as a separate 'condition'."),
+                      p("The name of each file (before the .xls or .xlsx extension) will be the 'category' "),
                       hr(),
                       h3("Download example data"),
                         
                       p("Download example 2-chromosome FISH data ", 
                         tags$a(target = "_blank", 
-                               href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxaigjiFmba", "here"), 
+                               href = "https://docs.google.com/uc?export=download&id=1ZO9jWicY-5WohvGbQi_WrQWcDaram5wZ", "here"), 
                         " (zip file)")
              ),
              
@@ -87,17 +98,17 @@ ui <- navbarPage(
              tabPanel("SC-WGS",
                       h3("Upload single cell whole genome sequencing (sc-wgs) data"),
                             fileInput(
-                              inputId = "gnk_file",
+                              inputId = "wgs_file",
                               label = "Copy Number File (.txt)", #names must match those in gnko
                               multiple = FALSE,
                               accept = ".txt"), 
                       fileInput(
-                              inputId = "gnk_key",
+                              inputId = "wgs_key",
                               label = "Copy Number Key (.xls or .xlsx)", #names must match those in gnko
                               multiple = FALSE,
                               accept = c(".xlsx", ".xls")#, ".csv", ".txt", ".tsv")
                             ),
-                      actionButton("submit_wgs", "Submit"),
+                      actionButton("submit_wgs", "Submit and Go to Table Summary"),
                       hr(),
                       h3("Copy number and key file structure guide"),
                       
@@ -108,12 +119,15 @@ ui <- navbarPage(
                       img(src="ginkgo_key.png", width=400),
                       p("Download example sc-WGS data (processed using Ginkgo)", 
                         tags$a(target = "_blank", 
-                               href="http://qb.cshl.edu/ginkgo/uploads/_t10breast_navin/SegCopy?uniq=1210441", "here"), 
-                        "(save as '.txt' file)"),
+                               href= "https://docs.google.com/uc?export=download&id=1VW35NIXSCu7OKaFTSFF_LacwjBqM9JWo",
+                                "here"), 
+                        "(original data on Ginkgo website linked", 
+                        tags$a(target = "_blank", 
+                               href= "http://qb.cshl.edu/ginkgo/uploads/_t10breast_navin/SegCopy?uniq=1210441",
+                               "here)")), 
                       p("Download example sc-WGS key", 
                         tags$a(target = "_blank",
-                               href="https://docs.google.com/uc?export=download&id=1bhOEye8FR3Ut9w_hT-SMab2AaUEx9_5x", "here"))
-                      #)
+                               href="https://docs.google.com/uc?export=download&id=1Yon70xRNv693qSjANrADW1WHSHkZ-2Xj", "here"))
              ),
              tabPanel("SKY",
                       h3("Upload spectral karyotype (SKY) data"),
@@ -123,45 +137,50 @@ ui <- navbarPage(
                         multiple = FALSE,
                         accept = c(".xlsx", ".xls")#c(".csv", ".txt", ".tsv")
                       ), 
-                      actionButton("submit_sky", "Submit"),
+                      actionButton("submit_sky", "Submit and Go to Table Summary"),
                       hr(),
                       h3("SKY file structure guide"),
-                      img(src="sky_layout.png", width=550),
+                      img(src="sky_layout.png", width=800),
                       p("One SKY copy number file should be uploaded at a time."),
                       p("Download example SKY data", 
                         tags$a(target = "_blank", 
-                               href="https://docs.google.com/uc?export=download&id=1VO2jwPt8bCgCP87-brYujAZ459OCaFmX", "here")),
+                               href="https://docs.google.com/uc?export=download&id=1hUP9yCWbDeh6Yf2IpR5LtaFs4iFK86tp", "here")),
                       p("Access a list of International System for Chromosome Nomenclature (ISCN) symbols", 
                         tags$a(target = "_blank", 
                                href="https://cgap.nci.nih.gov/Chromosomes/ISCNSymbols", "here"))))),
  
-  tabPanel("Table Summary", icon = icon("table"),
-                     #p("The table below gives the weighted average copy number rounded to the nearest integer per chromosome per sample."),
-                     #p("A 'wide' table of this data is available for download, with chromosomes as columns and samples as rows."),
-                     #downloadButton("g2T.d", "Download"),
-                     #tableOutput("g2T"),
-          #hr(),
-           #DT::dataTableOutput("g2T"),
-          #tableOutput("f1TestTable"),
-          tabsetPanel(
-            id = 'dataset',
+  tabPanel("Table Summary", icon = icon("table"), value = "tableTab",
+           actionButton("returnToDataUpload", "Upload additional datasets"),
+           hr(),
+           tabsetPanel(
             tabPanel("Stats Per Treatment", DT::dataTableOutput("sumryStatsTbl")),
             tabPanel("Stats Per Treatment & Chromosome", DT::dataTableOutput("sumryStatsTblPerChr")),
             tabPanel("sc-wgs summary", DT::dataTableOutput("g2T"),
-                     p("A 'wide' table of this data is available for download, with chromosomes as columns and samples as rows. 
+                     p("A 'wide' table of single cell whole genome sequencing (sc-wgs) data is available for download, with chromosomes as columns and samples as rows. 
                       This table contains the weighted average copy number (by bin size) rounded to the nearest integer per chromosome per sample."),
                      downloadButton("g2T.d", "Download")
             )
           ), 
           hr(),
+          
+          
           p("Each row in this table represents
-            a different file that was uploaded. The columns represent the following:",
+            a different file that was uploaded. The columns represent the following:"),
             
+            img(src="expl_summary_stat_vis.png", width=800),
+            p(
             tags$ul(
               tags$li(
-                "Columns labeled diploid, polyploid, and aneuploid represent the proportion of cells 
-                in that state per treatment."
+                p("Columns labeled diploid, polyploid, and aneuploid represent the proportion of cells 
+                in that state per treatment (\\(P_D\\), \\(P_P\\), and \\(P_A\\), respectively).")
               ),
+              tags$ul(
+                tags$li("Diploid: cells containing 2 copies of all the chromosomes analyzed"),
+                tags$li("Aneuploid: any cell that has at least one chromosome with copy number different than 2, as long as the copy number is not the same for all chromosomes analyzed. 
+                        Note: Cells with 1 copy of all chromosomes analyzed will be classified as aneuploid."),
+                tags$li("Polyploid: cells with matching chromosome copy numbers for all the chromosomes analyzed, as long as they are higher than 2.")
+                ),
+              #),
               tags$li(
                 
                 "The column labeled (n) represents the total number of cells or chromosomes analyzed within the file."
@@ -178,12 +197,16 @@ ui <- navbarPage(
                   "Bakker et al 2016 (Suppl.Methods & Table S2)"
                 )
               )
-          ))),
-  tabPanel("Visualization", icon = icon("bar-chart-o"), #icon = icon("heatmap"), #
+          )),
+          p("A tabular and visual representation of the summary statistics is shown below"),
+         # fluidRow(
+            #column(6,
+            #column(6, 
+                   img(src="expl_summary_stat.png", width=600)
+            #)
+          ),
+  tabPanel("Visualization", icon = icon("bar-chart-o"),  #icon = icon("heatmap"), #
            tabsetPanel(
-             tabPanel("FISH", uiOutput("gridPlots")),
-             tabPanel("sc-WGS", plotOutput("chrHeatG2")),
-             tabPanel("SKY", plotOutput("chrHeatS2")),
              tabPanel("Scores by Group",
                       h3("Scatterplot of Aneuploidy and Heterogeneity Score by Group"),
                       plotOutput("aneuHeteroSctrPlt"),
@@ -191,140 +214,71 @@ ui <- navbarPage(
                       plotOutput("ternPlot"),
                       hr(),
                       p("Ternary plots are used to represent proportions of 3 groups that sum to 1"),
-                      #p("T = Proportion of Diploid cells"),
-                      #p("L = Proportion of Aneuploid cells"),
-                      #p("R = Proportion of Polyploid cells"),
                       p("Position of each point represents the proportion of cells within each group.
                         For example, a point near 'Diploid' would mean that most of the cells within that group
                         are diploid.")),
              tabPanel("Scores by Group & Chromosome",
                       plotOutput("aneuHeteroSctrPltPerChr")
              ),
+             tabPanel("FISH", 
+                      fluidRow(
+                        column(2,
+                               h4("Interpreting a gridplot"),
+                               img(src="expl_gridplot.png", width=250)
+                        ),
+                        column(10,
+                               p("Bivariate chromosome gridplots show the percentage of cells
+                        associated with the indicated number of chromosomes."),
+                               p("The diploid state (2 copies of each chromosome) is indicated in bold"),
+                               p("Deeper red colors are associated with an increased percentage"),
+                               p("The sum of the values in each grid equals 100%.")
+                        )
+                      ),
+                      uiOutput("gridPlots")),
+             tabPanel("sc-WGS", plotOutput("chrHeatG2")),
+             tabPanel("SKY", plotOutput("chrHeatS2")),
              tabPanel("Permutations",
                       h3("Are the groups that we see statistically significantly different from each other
                         in terms of the degree of numerical aneuploidy?"),
                       p("Methods: 250 random permutations of the category associated with each observed cell. 
                         The difference in ANCA scores between all possible pairs of categories is calculated after each permutation. 
                         A p-value is calculated by counting how many permuted ANCA scores are more extreme than
-                        the observed ANCA score. The p-values is 2-sided, and there are three possible interpretations of the resulting p-value:
-                        Significantly similar (blue color), not significantly different (p > 0.05, grey color), significantly different (red color).
-                        If you're only looking for differences between groups, 
-                        then you should only focus on whether the groups are significantly *different* or not (red color)"),
-                      withLoader(tableOutput("permTableg2R"), type="html", loader="dnaspin"),
+                        the observed ANCA score."),
+                        p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
+                        between a given pair of groups. there two possible interpretations of the resulting p-value:
+                        not significantly different (p > 0.05, grey color) or significantly different (red color)."),
+                      h3("Single cell Whole Genome Sequencing data permutations"),
+                      
+                       withLoader(tableOutput("permTableg2R"), type="html", loader="dnaspin"),
                       withLoader(plotOutput("permPlotg2R"), type="html", loader="dnaspin"),
                       #tableOutput("permTableg2R"),
                       #plotOutput("permPlotg2R"), 
                       hr(),
-                      withLoader(tableOutput("permTables2R"), type="html", loader="dnaspin"),
-                      withLoader(tableOutput("permPlots2R"), type="html", loader="dnaspin"),
-                      #tableOutput("permTables2R"), plotOutput("permPlots2R"),
+                      #withLoader(tableOutput("permTables2R"), type="html", loader="dnaspin"),
+                      #withLoader(tableOutput("permPlots2R"), type="html", loader="dnaspin"),
+                      h3("SKY data permutations"),
+                      tableOutput("permTables2R"), plotOutput("permPlots2R"),
                       hr(),
+                      h3("FISH data permutations"),
                       #withLoader(tableOutput("permTablef1R"), type="html", loader="dnaspin"),
                       #withLoader(tableOutput("permPlotf1R"), type="html", loader="dnaspin"))
                       
                       tableOutput("permTablef1R"), plotOutput("permPlotf1R") ) 
-           ))
-          #h2("Summary Stats per Treatment"),
-          #tableOutput("sumryStatsTbl"),
-          #h2("Summary Stats per Treatment and Chromosome"),
-          #tableOutput("sumryStatsTblPerChr")),
-  #navbarMenu("Compare",
-  #           tabPanel("Treatments", "This page is currently blank. Let me know if we should reorganize some of the 
-  #                    plots from the Visualizations tab to this page. We can also delete this tab. "),
-  #           tabPanel("Platform", "This page is currently blank. Let me know if we should reorganize some of the 
-  #                    plots from the Visualizations tab to this page. We can also delete this tab."))
-)
-#    conditionalPanel(
-#      condition = "input.rb == 'fish2'",
-#      fileInput(
-#        inputId = "fish_files", #files
-#        label = "2. Upload FISH data (.xlsx or .xls)",
-#        multiple = TRUE,
-#        accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv")
-#      )),
-#    
-#    conditionalPanel(
-#      condition = "input.rb == 'ginkgo'",
-#      fileInput(
-#        inputId = "gnk_file",
-#        label = "2a. Upload Ginkgo Copy Number File (.txt)", #names must match those in gnko
-#        multiple = FALSE,
-#        accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv")
-#      ), fileInput(
-#        inputId = "gnk_key",
-#        label = "2b. Upload Ginkgo Key (xls or xlsx)", #names must match those in gnko
-#        multiple = FALSE,
-#        accept = c(".xlsx", ".xls")#, ".csv", ".txt", ".tsv")
-#      )),
-#    conditionalPanel(
-#      condition = "input.rb == 'sky'",
-#      fileInput(
-#        inputId = "sky_file", #files
-#        label = "2. Upload Sky data (.xlsx or .xls)",
-#        multiple = FALSE,
-#        accept = c(".xlsx", ".xls")
-#      )),
-#    actionButton("submit", "Submit"),
-#
-#    p("Download example 2-chromosome FISH data ", 
-#      tags$a(target = "_blank", 
-#             href = "https://docs.google.com/uc?export=download&id=1CKh6feR7AmndtAvoF4Y-EFxaigjiFmba", "here"), 
-#      " (zip file)"),
-#    p("Download example Ginkgo data", 
-#      tags$a(target = "_blank", 
-#             href="http://qb.cshl.edu/ginkgo/uploads/_t10breast_navin/SegCopy?uniq=1210441", "here"), 
-#      "(save as '.txt' file)"),
-#    p("Download example Ginkgo key", 
-#      tags$a(target = "_blank",
-#             href="https://docs.google.com/uc?export=download&id=1bhOEye8FR3Ut9w_hT-SMab2AaUEx9_5x", "here"))
-#  )
-#  )
-  #mainPanel(),
-  
-  
-##  mainPanel(
-##    conditionalPanel(condition = "input.rb == 'fish2'",
-##                     tabPanelFishMaster()),
-##    conditionalPanel(condition = "input.rb == 'ginkgo'",
-##                     tabsetPanel(
-##                       tabPanel("Chromosomal Copy Number Heat Map",
-##                                plotOutput("g4P")),
-##                       tabPanel("Sample x Chromosome Summary Table", 
-##                                p("The table below gives the weighted average copy number per chromosome per sample.
-##                                  The table is also available for download."),
-##                                downloadButton("g2T.d", "Download"),
-##                                tableOutput("g2T")),
-##                       tabPanel("Summary statistics",
-##                        p("ginkgo_table:"),
-##                        downloadButton("g10T.d", "Download"),
-##                         tableOutput("gnk_score_tbl"))
-##                      )),
-##    conditionalPanel(condition = "input.rb == 'sky'",
-##                     tabsetPanel(
-##                       tabPanel("Plots",
-##                                plotOutput("skyPlotChr")),
-##                       tabPanel("Data Table",
-##                                tableOutput("s1R.t")),
-##                       tabPanel("Summary Statistics",
-##                                tableOutput("s7T"))
-##                     ))
-##    )
-#)
+           ))))
+ 
 
 
 
-server <- shinyServer(function(input, output) {
+server <- shinyServer(function(input, output, session) {
   ###########
   #1. Read in raw ginkgo data
    gR <- eventReactive(input$submit_wgs, ignoreNULL = FALSE, { #var. named with capital R for Reactive
-     #sprintf("hello3")
-     #validate(need(input$gnk_file != "", "..."))
-     #print("hello2")
-    if (is.null(input$gnk_file)) {
+     #validate(need(input$wgs_file != "", "..."))
+    if (is.null(input$wgs_file)) {
       return(NULL)
     }
       
-      path_list <- as.list(input$gnk_file$datapath)
+      path_list <- as.list(input$wgs_file$datapath)
       #fileinput: 'name', 'size', 'type' and 'datapath'.
       tbl_list <- lapply(path_list, read_delim, delim="\t")
       
@@ -341,16 +295,14 @@ server <- shinyServer(function(input, output) {
    #2. read in the ginkgo key 
    
    gKR <- reactive({#eventReactive(input$submit, { #g for ginkgo K for Key, R for reactive
-     #validate(need(input$gnk_key != "", "..."))
+     #validate(need(input$wgs_key != "", "..."))
      
-     if (is.null(input$gnk_key)) {
+     if (is.null(input$wgs_key)) {
        return(NULL)
      }
-     gK <- read_xlsx(path = input$gnk_key$datapath[1], sheet = 1) #%>%
+     gK <- read_excel(path = input$wgs_key$datapath[1], sheet = 1) #%>%
        #mutate(category = paste0(category, "__sc-wgs"))
      
-     #print("head(gk):")
-     #print(head(gK))
      return(gK)
    })
    
@@ -379,7 +331,8 @@ server <- shinyServer(function(input, output) {
       return(NULL)
     }
     g2.t <- g2R() %>% #select(-avgRound) %>%
-      spread(key = chr, value = num_chr)
+      spread(key = chr, value = num_chr) #%>%
+    colnames(g2.t)[4:ncol(g2.t)] <- paste0("Chr. ", colnames(g2.t)[4:ncol(g2.t)])
     return(g2.t)
   })
   
@@ -399,11 +352,12 @@ server <- shinyServer(function(input, output) {
     DT::datatable(g2R())
   })
   
+  
   f1R <- eventReactive(input$submit_fish, ignoreNULL = FALSE, {
     #validate(need(input$fish_files != "", "..."))
     
-    #if (is.null(input$fish_files)) {
-    if (!is.data.frame(input$fish_files)) {
+    if (is.null(input$fish_files)) {
+    #if (!is.data.frame(input$fish_files)) {
       return(NULL)
     }
     
@@ -411,10 +365,15 @@ server <- shinyServer(function(input, output) {
     maxChrPlus1 = maxChr + 1
     
     path_list <- as.list(input$fish_files$name)
-    tbl_list <- lapply(input$fish_files$datapath, read_xlsx)
+    tbl_list <- lapply(input$fish_files$datapath, read_excel)
     
-    f1 <-  map2(.x = path_list, .y= tbl_list,
-                .f = ~data.frame(category=.x, .y)) %>% 
+    #mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr))))
+    #df
+    #tbl_list[[1]] %>% clean_names %>% rename_at(vars(names(.)), ~ unlist(regmatches(., gregexpr("Y|X|[[:digit:]]+", .))))# %>% 
+    
+    f1 <- map2(.x = path_list, .y= tbl_list,
+                .f = ~data.frame(category=.x, .y) %>% clean_names) %>% #) %>%
+                 #rename_at(vars(names(.)), ~ unlist(regmatches(., gregexpr("Y|X|[[:digit:]]+", .))))) %>%
       do.call(rbind, .) %>% 
       as_tibble() %>% 
       clean_names() %>%
@@ -424,36 +383,21 @@ server <- shinyServer(function(input, output) {
       mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
       mutate(chr = factor(chr, levels=c(1:22, "X"))) %>%
       mutate(file_type = "fish") %>%
+      mutate(category = tools::file_path_sans_ext(category)) %>%
       .[ , order(names(.))] 
-    
      return(f1)
   })
-  
-  f1TestTable_r <- reactive({
-    if (is.null(f1R())) {
-      return(NULL)
-    }
-  calc_aneupl_score(f1R())
-    #print(calc_aneupl_score(f1R()))
-    #print(calc_aneupl_score(g2R()))
-  #list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
-   # print("length(list_to_pass):")
-   # print(length(list_to_pass))
-   # aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score)
-   # head(aneupl_scores)
-  })
-  
 
-  
+
   s1R <- eventReactive(input$submit_sky, ignoreNULL = FALSE, { #reactive({
     #validate(need(input$sky_file != "", "..."))
-    print("class(input$sky_file)")
-    print(class(input$sky_file))
+    #print("class(input$sky_file)")
+    #print(class(input$sky_file))
     if (is.null(input$sky_file)) {
       return(NULL)
     }
     
-    s1 <- read_xlsx(input$sky_file$datapath) %>% 
+    s1 <- read_excel(input$sky_file$datapath) %>% 
       clean_names() %>%
       filter(rowSums(is.na(.)) <= .50*ncol(.)) %>% #remove rows where > 50% of values are na
       filter(.[,1] != "Chr. No.") %>%
@@ -461,7 +405,7 @@ server <- shinyServer(function(input, output) {
       .[-1,] %>%
       clean_names()
     
-    #sample_name <- read_xlsx(input$sky_file$datapath) %>% names(.)[2]
+    #sample_name <- read_excel(input$sky_file$datapath) %>% names(.)[2]
     #print(sample_name)
     
     return(s1)
@@ -477,7 +421,7 @@ server <- shinyServer(function(input, output) {
       select(-cell)
     
     s2 <- s1R() %>% 
-      filter(.[,1] != "Source") %>%
+      filter(.[,1] != "Category") %>%
       mutate_at(vars(starts_with("x")), 
                 .funs = funs(ifelse(str_detect(., ","), 
                                     str_split_fixed(., ",", n=2)[1,1], .))) %>%
@@ -489,32 +433,20 @@ server <- shinyServer(function(input, output) {
       mutate(file_type = "sky") %>%
       mutate(chr = factor(chr, levels=c(1:22, "X"))) %>%
       .[ , order(names(.))]
-    #print(head(s2))
-    #print(head(calc_anca_score(s2)))
-    #print(list(g2R(), s2, f1R()) %>% compact())
     return(s2)
   })
   
- # test <- reactive({
- #   print(g2R())
- # })
-  
-  output$f1TestTable <- renderTable({
-   #tagList(head(s2R()), 
-   #        head(g2R()))
-   #        head(f1R()))
-    #head(calc_anca_score(s2R()))
-    #print(head(s2R()))
-    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
-    #
-    #tagList(
-    #  print(length(list_to_pass)),
-    #  head(calc_anca_score(s2R()))
-    #)
-  })
   
 
   stsTbl <- reactive({
+    #list_to_pass2 <- map2(.x = c("sc-wgs", "sky", "fish"), .y =  list_to_pass, .f = ~mutate(.data = .y, file_type = .x))
+    #list_to_pass <- list_to_pass2
+    #sumStats2 <- purrr::reduce(list(heterog_scores, perc_ploidy, anca_scores, aneupl_scores), full_join, by=c("category", "file_type")) 
+    #ggplot(sumStats2, aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+    #                     color = category, shape= file_type)) +  #paste0(file_type, ": ",category))) + #category, shape=file_type)) + 
+    #  geom_point( size=4, alpha=0.8) + theme_classic() +
+    #  coord_fixed(ratio = 1)
+    
     list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
     aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score)
     print(aneupl_scores)
@@ -528,9 +460,8 @@ server <- shinyServer(function(input, output) {
   output$sumryStatsTbl <- DT::renderDataTable({
     
     validate(
-      need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$gnk_file), 'Please upload at least 1 file!')
+      need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$wgs_file), 'Please upload at least 1 file!')
     ) 
-    #DT::datatable() 
     DT::datatable(stsTbl(),       
                   filter = list(position = 'top', clear = FALSE),
                   options = list(
@@ -548,7 +479,7 @@ server <- shinyServer(function(input, output) {
   
   output$sumryStatsTblPerChr <- DT::renderDataTable({
     validate(
-      need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$gnk_file), 'Please upload at least 1 file!')
+      need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$wgs_file), 'Please upload at least 1 file!')
     ) 
     DT::datatable(stsTblPerChr(),       
                          filter = list(position = 'top', clear = FALSE),
@@ -569,8 +500,9 @@ server <- shinyServer(function(input, output) {
     p <- ggtern() + 
       geom_point(data=stsTbl(), 
                  aes(x = aneuploid,y=diploid,z=polyploid,
-                     fill = paste0(file_type, ": ",category)),#, label=file_type), 
-                 size = 3, alpha = 0.4, pch= 21, color = "black", stroke = 1) + 
+                     color = category, shape= file_type),
+                     #fill = paste0(file_type, ": ",category)),#, label=file_type), 
+                 size = 3, alpha = 0.8) + #,  color = "black") +  #pch= 21, #, stroke = 1
       xlab("") + ylab("") +
       Tlab("Diploid") +
       Llab("Aneuploid") +
@@ -587,12 +519,18 @@ server <- shinyServer(function(input, output) {
   
   #### 2018-05-06 adding scatterplots for heterogeneity and aneuploidy scores
   output$aneuHeteroSctrPlt <- renderPlot({
-    p <- ggplot(stsTbl(), aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
-                              fill = category, shape=file_type)) + 
-      geom_point(pch=21, size=4, stroke = 1, alpha=0.4) + theme_classic() +
+    
+    p2 <- ggplot(stsTbl(), aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+                          color = category, shape= file_type)) +  #paste0(file_type, ": ",category))) + #category, shape=file_type)) + 
+      geom_point( size=4, alpha=0.8) + theme_classic() +
       coord_fixed(ratio = 1)
+    
+    #p <- ggplot(stsTbl(), aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+    #                          fill = category, shape= factor(file_type))) +  #paste0(file_type, ": ",category))) + #category, shape=file_type)) + 
+    #  geom_point(pch=21, size=4, stroke = 1, alpha=0.4) + theme_classic() +
+    #  coord_fixed(ratio = 1)
       
-    return(p)
+    return(p2)
     #NULL
   })
   
@@ -610,7 +548,7 @@ server <- shinyServer(function(input, output) {
   ##### 2018-05-06 adding heatmaps
   g4R <- reactive({
     validate(
-      need(!is.null(input$sky_file), 'Please upload at least 1 sc-wgs file!')
+      need(!is.null(input$wgs_file), 'Please upload at least 1 sc-wgs file!')
     ) 
     
     g2_to_g4 <- g2R() %>% 
@@ -722,7 +660,7 @@ server <- shinyServer(function(input, output) {
   #### adding permutation plots
   permsG2R <- reactive({
     validate(
-      need(!is.null(input$gnk_file), 'Please upload at least 1 sc-wgs file.')
+      need(!is.null(input$wgs_file), 'Please upload at least 1 sc-wgs file.')
     ) 
     
     nPerms <- 250
@@ -759,11 +697,9 @@ server <- shinyServer(function(input, output) {
     ) 
     
     nPerms <- 250
-    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
     fxn <- calc_anca_score #calc_heterog_score#calc_aneupl_score
     s2r_perm_df = retPermPlotDf(input_df = s2R(), fxn, nPerms = nPerms)
     return(s2r_perm_df)
-    #lapply(list_to_pass, function(x) retPermPlotDf(x, fxn)) #input_df <- g2R()
   })
   
   
@@ -818,8 +754,49 @@ server <- shinyServer(function(input, output) {
       coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
   })
   
+  ###### adding shinyjs buttons - redirection 2018-05-10
   
+  observeEvent(input$submit_fish, {
+    updateTabsetPanel(session, "inTabset",
+                      selected = "tableTab")
+  })
   
+  ### fish
+  observe({
+    shinyjs::toggleState("submit_fish", !is.null(input$fish_files))
+  })
+  
+  observeEvent(input$submit_wgs, {
+    updateTabsetPanel(session, "inTabset",
+                      selected = "tableTab")
+  })
+  
+  ### wgs
+  observeEvent(input$submit_wgs, {
+    updateTabsetPanel(session, "inTabset",
+                      selected = "tableTab")
+  })
+  
+  observe({
+    shinyjs::toggleState("submit_wgs", !is.null(input$wgs_file) & !is.null(input$wgs_key))
+  })
+  
+  ### sky
+  observeEvent(input$submit_sky, {
+    updateTabsetPanel(session, "inTabset",
+                      selected = "tableTab")
+  })
+  
+  observe({
+    shinyjs::toggleState("submit_sky", !is.null(input$sky_file))
+  })
+  
+  observeEvent(input$returnToDataUpload, {
+    updateTabsetPanel(session, "inTabset",
+                      selected = "uploadTab")
+  })
+  
+
   #########adding FISH bivariate plots 2018-05-05
   classes <- reactive({unique(f1R()$category)})
   #fileinput: 'name', 'size', 'type' and 'datapath'.
@@ -849,7 +826,7 @@ server <- shinyServer(function(input, output) {
   f4Plot <- reactive({
     validate(
       need(!is.null(input$fish_files), 'Please upload at least 1 FISH file!')
-    ) 
+    )
     
     f4 <- f1R() %>% 
       select(-file_type) %>% 
@@ -868,76 +845,27 @@ server <- shinyServer(function(input, output) {
       output[[plotname]] <- renderPlot({
         
         classes <- unique(f1R()$category)
-        file_names <- input$fish_files$name #input$fish_files$name})
+        file_names <- input$fish_files$name
         
         maxChr <- 8
         maxChrPlus1 = maxChr + 1
         nchrs <-  length(unique(f1R()$chr))
         chr_pairs <- combn(1:nchrs, 2)
-        
-        #print("my_i")
-        #print(my_i)
-        #
-        #print("head(f4Plot())")
-        #print(head(f4Plot()))
-        #print("chr_pairs[,all_combos_chr_pairs_and_classes()[my_i,1]]+1")
-        #print(chr_pairs[,all_combos_chr_pairs_and_classes()[my_i,1]]+1)
-        #print("all_combos_chr_pairs_and_classes()[my_i,1]")
-        #print(all_combos_chr_pairs_and_classes()[my_i,1])
- 
     
         f1R.t2 <- f4Plot() %>% select(c(1, chr_pairs[,all_combos_chr_pairs_and_classes()[my_i,1]]+1), ncol(.))
-        print("head(f1R.t2)")
-        print(head(f1R.t2))
-        #  for (ea_class in 1:length(classes)){
-        
+
         matr_plot <- return_chr_prop_matr2(f1R.t2,classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
                                           maxPair = maxChrPlus1)
-        print("matr_plot")
-        print(matr_plot)
+
         x_y_axis_lab <- colnames(matr_plot)[4:5]
-        print("x_y_axis_lab")
-        print(x_y_axis_lab)
         
-        plt <- create_perc_matr2(matr_plot, title = classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
+        plt <- create_perc_matr2.1(matr_plot, title = classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
                                  minChr = 1, 
                                  maxChr = maxChrPlus1, xlab = x_y_axis_lab[1], ylab=x_y_axis_lab[2])
         return(plt)
-        
       })
     })
   }
-  
-  
-  
-#  output$gridPlots2 <- renderPlot({
-#    classes <- unique(f1R()$category)
-#    file_names <- input$fish_files$name #input$fish_files$name})
-#    
-#    maxChr <- 8
-#    maxChrPlus1 = maxChr + 1
-#    nchrs <-3 # length(unique(f1R()$chr))# %>% ncol(.) - 3
-#    chr_pairs <- combn(1:nchrs, 2)
-#    f2 <- f1R() %>% spread(chr, num_chr)
-#    plot_list <- list()
-#    for(ea_chr_pair in 1:ncol(chr_pairs)){
-#      f1R.t2 <- f2 %>% select(c(1, chr_pairs[,ea_chr_pair]+1))
-#      
-#      for (ea_class in 1:length(classes)){
-#        matr_plot <- return_chr_prop_matr(f1R.t2,classes[ea_class], maxPair = maxChrPlus1)
-#        plt <- create_perc_matr2(matr_plot, title = classes[ea_class], minChr = 1, 
-#                                 maxChr = maxChrPlus1, xlab = "", ylab="")
-#        #save plotted object
-#        plot_list[[ea_class + (length(classes)*(ea_chr_pair - 1))]] <- plt
-#        
-#      }
-#    }
-#    #plot_list.arr <- grid.arrange(grobs = plot_list, ncol = ncol(chr_pairs)) ## display plot
-#    plot_list.arr <- grid.arrange(grobs = plot_list, ncol =1) ## display plot
-#    
-#    return(plot_list.arr)
-#  })
-  
 
 })
 
@@ -945,3 +873,17 @@ server <- shinyServer(function(input, output) {
 shinyApp(ui, server)
 #app <- shinyApp(ui, server)
 #runApp(app, display.mode = "showcase")
+#R -e "shiny::runApp('app.R')"
+
+# file_name / smpl_id - done!
+# add chr name to header - 
+# polyploid, diploid and aneuploid
+# rearrange
+
+# remove negative sign from the p-value
+
+# signficantly similar? no. 
+
+#Elaine's paper
+#why we cant reproduce figure 1?
+#send the new figure
