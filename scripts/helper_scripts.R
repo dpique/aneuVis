@@ -175,64 +175,6 @@ multiplot <- function(..., plotlist=NULL, file, cols=1, layout=NULL) {
 }
 
 
-tabPanelFishMaster <- function(x){
-  
-  tabsetPanel(
-    tabPanel("Grid Plots", uiOutput("gridPlots")),
-    tabPanel("Grid Plots w grid.arrange", plotOutput("gridPlots2")),
-    tabPanel(
-      "Summary statistics",
-      tableOutput("ft"),
-      p(
-        "Each column in this table represents
-        a different file that was uploaded. The rows represent the following:",
-        
-        tags$ul(
-          tags$li(
-            "The first 3 rows represent
-            the proportion of diploid (2n), polyploid, and aneuploid cells in
-            each sample."
-          ),
-          tags$li(
-            "The 4th row represents entropy, which was calculated
-            using the values in the first 3 rows."
-          ),
-          tags$li(
-            "The 5th row (n) represents the total number of cells analyzed within the file."
-          ),
-          tags$li(
-            "The average number of copy alterations per group (anca_score) was calculated as in",
-            tags$a(target = "_blank", href = "https://www.ncbi.nlm.nih.gov/pubmed/12775914", "Blegen et al 2003")
-          ),
-          tags$li(
-            "The aneuploidy and heterogeneity scores were calculated as in",
-            tags$a(
-              target = "_blank",
-              href = "https://www.ncbi.nlm.nih.gov/pubmed/27246460",
-              "Bakker et al 2016 (Suppl.Methods & Table S2)"
-            )
-          ),
-          tags$li(
-            "The instability index (instab_idx_bayani) was calculated as in",
-            tags$a(
-              target = "_blank",
-              href = "https://www.ncbi.nlm.nih.gov/pubmed/18813350",
-              "Bayani et al 2008"
-            ), "and", tags$a(
-              target = "_blank",
-              href = "https://www.ncbi.nlm.nih.gov/pubmed/9121588",
-              "Langauer et al 1997"
-            ), ". I believe this is equivalent to the anca_score."
-          )
-          ),
-        "Also, none of these methods weigh the number of chromosomes/degree of aneuploidy, 
-        which could present an opportunity for developing a new index."
-      )
-      ),
-    tabPanel("Ternary Plot", plotOutput("ternPlot")),
-    tabPanel("Entropy Plot", plotOutput("ploidyPlot")))
-}
-
 
 
 ############
@@ -304,7 +246,7 @@ calc_aneupl_score <- function(chr_tbl, retChr = FALSE){
 }
 
 
-calc_anca_score <-  function(chr_tbl, retChr = FALSE) {
+calc_anca_score_normalized <-  function(chr_tbl, retChr = FALSE) {
   if(retChr){
     anca_tbl <- chr_tbl %>% mutate(diploid_bin = num_chr == 2) %>%
       group_by(category, diploid_bin, chr, file_type) %>% 
@@ -312,21 +254,45 @@ calc_anca_score <-  function(chr_tbl, retChr = FALSE) {
       spread(key = diploid_bin, value=n) %>%
       clean_names() %>%
       mutate_if(is.integer, funs(replace(., is.na(.), 0))) %>% #replace all NA with 0
-      mutate(anca_score_blegen = false/ (true + false)) %>% 
-      select(category, chr, anca_score_blegen, file_type) #%>%
+      mutate(anca_score_normalized = false/ (true + false)) %>% 
+      select(category, chr, anca_score_normalized, file_type) #%>%
       #mutate(categ_file_type = paste0(category, "_",file_type))
     return(anca_tbl)
   }
+  #2018-05-12
   chr_tbl %>% mutate(diploid_bin = num_chr == 2) %>%
     group_by(category, diploid_bin, file_type) %>% 
     summarise (n = n()) %>%
     spread(key = diploid_bin, value=n) %>%
     clean_names() %>%
     mutate_if(is.integer, funs(replace(., is.na(.), 0))) %>% #replace all NA with 0
-    mutate(anca_score_blegen = false / (true + false)) %>% 
-    select(category, anca_score_blegen, file_type) #%>%
+    mutate(anca_score_normalized = false / (true + false)) %>% 
+    select(category, anca_score_normalized, file_type) #%>%
     #mutate(categ_file_type = paste0(category, "_",file_type))
 }
+
+calc_anca_score <-  function(chr_tbl) {
+  #chr_tbl$file_type <- "sky"
+  #chr_tbl %>% select(smpl, category) %>% distinct() %>% group_by(category)  %>% count()
+  #unique(chr_tbl$smpl)
+  
+  n_smpl_per_categ <- table(chr_tbl$category) / length(unique(chr_tbl$chr))# %>% data.frame
+  n_smpl_per_categ.df <- as_tibble(n_smpl_per_categ) %>% rename(category = "Var1")
+  
+  
+  #2018-05-12
+  chr_tbl %>% 
+    mutate(diploid_bin = num_chr == 2) %>%
+    group_by(category, diploid_bin, file_type) %>% 
+    summarise (n = n()) %>%
+    spread(key = diploid_bin, value=n) %>%
+    clean_names() %>%
+    mutate_if(is.integer, funs(replace(., is.na(.), 0))) %>% #replace all NA with 0
+    left_join(n_smpl_per_categ.df, by = "category") %>%
+    mutate(anca_score = false/n) %>%
+    select(category, anca_score, file_type)
+}
+
 
 
 calc_perc_ploidy <-  function(chr_tbl) {
@@ -349,6 +315,31 @@ calc_perc_ploidy <-  function(chr_tbl) {
 }
 
 
+calc_instab_idx <-  function(chr_tbl) {
+  
+  cat_file_type <- chr_tbl %>% 
+    select(category, file_type) %>% 
+    distinct()
+  
+  chr_tbl %>% 
+    group_by(category, chr, num_chr) %>%
+    summarise (n = n()) %>%
+    mutate(freq = n / sum(n)) %>% 
+    ungroup %>% 
+    replace(is.na(.), 0) %>%  #get the max value from each group!
+    group_by(category, chr) %>% 
+    filter(freq == max(freq)) %>% 
+    select(category, chr, freq) %>% 
+    ungroup %>% 
+    distinct() %>%
+    mutate(one_minus_freq = 1-freq) %>%
+    group_by(category) %>%
+    summarize(instab_idx = mean(one_minus_freq)) %>%
+    left_join(cat_file_type, by="category")
+ }
+
+
+
 ##########
 #functions for permutation
 pvalFxn <- function(val, nPerm){
@@ -365,123 +356,125 @@ pvalFxn <- function(val, nPerm){
   }
 }
 
+pvalFxn2 <- function(val, nPerm){
+  pval <- (nPerm-val +1)/nPerm
+  if(pval > 1){
+    return(1)
+  } else {
+    return(pval)
+  }
+}
+
 
 retPermPlotDf <- function(input_df, fxn, nPerms){
-  
-  obs_dist <- shufRetDist(input_df, fxn, perm=FALSE)
-  
-  shuf_dists_aneupl <- lapply(1:nPerms, function(x) shufRetDist(input_df, fxn)) %>%
-    lapply(function(x) x > obs_dist) %>%
+  #test <- input_df %>% fxn
+  input_df_wide <- input_df %>% spread(chr, num_chr)
+  obs_dist <- shufRetDist(input_df_wide, fxn, perm=FALSE)
+  #obs_dist_log <- log(obs_dist+1, 2)
+  shuf_dists <- lapply(1:nPerms, function(x) shufRetDist(input_df_wide, fxn))
+    
+  shuf_dists_aneupl <- shuf_dists %>% # lapply(1:nPerms, function(x) shufRetDist(input_df_wide, fxn)) %>%
+    lapply(function(x) obs_dist > x) %>%
     reduce(`+`) %>%
     as_tibble()
+  shuf_dists_mean <- Reduce("+", shuf_dists) / length(shuf_dists)
+  shuf_dists_mean2 <- as.vector(shuf_dists_mean) %>% as_tibble() %>% rename(perm_mean = value)
+  obs_dist2 <- as.vector(obs_dist) %>% as_tibble() %>% rename(obs_val = value)
   
-  colorRedBlue <- RColorBrewer::brewer.pal(n = 11, name = "RdBu")
-  brk_lbls = c(">0.05", "<0.05", "<0.01", "<0.001", "0", ">0.05", "<0.05", "<0.01", "<0.001")##">0.001", "")
+  shuf_dists_sd <- lapply(shuf_dists, as.vector) 
+  #dim(as.matrix(shuf_dists[[1]]))
+  shuf_dists_ci <- do.call(rbind, shuf_dists_sd) %>% 
+    apply(2, quantile, c(0.025, 0.975)) %>% 
+    t() %>% 
+    as_tibble() %>%
+    rename_all(.funs = ~paste0("perm_dist_", .))
+  
+  brk_lbls <- c("<0.001", "<0.01", "<0.05", ">0.05") 
   categs <- as_tibble(t(combn(x = unique(input_df$category), m = 2))) %>% 
     bind_cols(shuf_dists_aneupl) %>%
-    mutate(pvalue = sapply(value, pvalFxn, nPerms),
-           sim1diffneg1 = ifelse(value > nPerms /2, 1,-1),
-           pvalPosNeg = pvalue * sim1diffneg1) %>%
-    mutate(pval_cut = cut(pvalPosNeg, 
-                          breaks = c(-1, -0.05, -0.01, -0.001, -1e-16, 1e-16, 0.001, 0.01, 0.05, 1)),
-           pval_cut = fct_collapse(pval_cut, ">0.05" = c("(-1,-0.05]", "(0.05,1]") ),
-           pval_cut = fct_drop(pval_cut, only = "(-1e-16,1e-16]"),
-           pval_cut = factor(pval_cut, levels = levels(pval_cut)[c(4:1,7:5)]))
-  return(categs)
+    mutate(pvalue = sapply(value, pvalFxn2, nPerms),
+           pval_cut = cut(pvalue, 
+                          breaks = c(0, 0.001, 0.01, 0.05, 1),
+                          labels = brk_lbls))
+  categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
+    mutate(fold_change = obs_val / (perm_mean)) %>%
+    mutate(value = nPerms-value)
+   return(categs2)
 }
 
 
 
 
 
-shufRetDist <- function(matr, fxn, perm = TRUE){
+shufRetDist <- function(matr_wide, fxn, perm = TRUE){
   if(perm == TRUE){
-    matr2 <- matr %>% 
-      spread(chr, num_chr) %>% 
+    #input_df = matr
+    matr2 <- matr_wide %>% #matr_wide %>% # matr5 %>% 
       mutate(category = sample(category)) %>%
       gather("chr", "num_chr", 4:ncol(.))
     matr3 <- matr2 %>% fxn
   } else {
-    matr3 <- matr %>% fxn
+    matr3 <- matr_wide %>%
+      gather("chr", "num_chr", 4:ncol(.)) %>% 
+      fxn
   }
   matr3 %>% ungroup() %>% select(contains("score")) %>% dist()
-}
-
-
-shufRetDist2 <- function(matr, fxn, perm = TRUE){
-  #do not use this function - 2018-05-06 12:30 pm
-  if(perm == TRUE){
-    fxn = list(calc_aneupl_score, calc_heterog_score, calc_perc_ploidy)
-    matr = g2
-    matr_shuf <- matr %>% 
-      mutate(num_chr = sample(num_chr), file_type = "sc-wgs") #%>% fxn
-    
-    #a <- calc_aneupl_score(matr_shuf)
-    #h <- calc_heterog_score(matr_shuf)
-    #p <- calc_perc_ploidy(matr_shuf)
-    #func <- list(runif, rnorm) 
-    #  invoke(.f = fxn[[1]], matr_shuf)
-    #  #sapply(fxn, . %>%  sapply(., .))
-    #lapply(X = fxn, FUN = function(x) x(matr_shuf))
-    #sapply(fxn, . %>%  sapply(matr_shuf, .))
-    #
-    #
-    #  map_df(~invoke_map(fxn, ,.), .id="id")
-    #
-    #funs <- list(sd=sd, mean=mean)
-    #trees %>% map_df(~invoke_map(funs, ,.), .id="id")
-    
-    map_df(~invoke_map(fxn, ,.), id="id") 
-  } else {
-    matr_shuf <- matr %>% mutate(file_type = "sc-wgs") %>% fxn #calc_aneupl_score()
-  }
-  matr_shuf %>% ungroup() %>% select(contains("score")) %>% dist()
 }
 
 
 
 ######## shiny modules 2018-05-12 #####
 
-permPlotUI <- function(id) {
+permPlotTblUI <- function(id, header) {
   ns <- NS(id)
   
-  fluidRow(
-    column(6, tableOutput(ns("perm_table"))),
-    column(6, plotOutput(ns("perm_plot")))
+  tagList(
+    hr(),
+    h3(header),
+    
+    sliderInput(ns("Nperms"), "Number of permutations:",
+                min = 0, max = 5000, value = 500, step = 500
+    ),
+    actionButton(ns("permute_action"), "Permute"),
+      tableOutput(ns("permTbl")),
+     plotOutput(ns("permPlot"))
   )
 }
 
 
-
-permPlot <- function(input, output, session, file_input, input_df, fxn, nPerms) {
+permPlotTbl <- function(input, output, session, file_input, input_df, fxn, nPerms) {
   #add file_type for validate
   # Yields the data frame with an additional column "selected_"
   # that indicates whether that observation is brushed
+
   
-  perms <- reactive({
-    validate(
-      need(!is.null(file_input), 'Please upload at least 1  file.')
-    ) 
-    
-    #nPerms <- 250
-    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
-    #fxn <- fxn #calc_anca_score #calc_heterog_score#calc_aneupl_score
-    f1r_perm_df = retPermPlotDf(input_df = input_df, fxn, nPerms = nPerms)
-    return(f1r_perm_df)
-    #lapply(list_to_pass, function(x) retPermPlotDf(x, fxn)) #input_df <- g2R()
+  
+  #perms <- reactive({ 
+  #  validate(
+  #    need(!is.null(file_input()), 'Please upload at least 1 file.')
+  #  ) 
+  #  print("hello")
+  #  perm_df = retPermPlotDf(input_df = input_df(), fxn, nPerms = input$Nperms)
+  #  return(perm_df)
+  #})
+  
+  perms <- eventReactive(input$permute_action, {
+    perm_df = retPermPlotDf(input_df = input_df(), fxn, nPerms = input$Nperms)
+    return(perm_df)
   })
   
   
   output$permTbl <- renderTable({
-    perms()
+    perms() %>% #mutate(value = nPerms-value) %>% 
+      rename("Group 1" = V1, "Group 2" = V2, "nperm_gr_thn_obs" = value)
   })
   
   output$permPlot <- renderPlot({
-    colorRedBlue <- RColorBrewer::brewer.pal(n = 11, name = "RdBu")
+    colorBlue <- RColorBrewer::brewer.pal(n = 9, name = "Blues")
     ggplot(perms(), aes(x=V1, y=V2, fill=pval_cut)) + 
       geom_tile() + 
-      scale_fill_manual(values = colorRedBlue[c(3:9)], drop=FALSE) +
-      geom_tile(color = "white", size = 1) + #scale_fill_distiller(direction = 1) +
+      scale_fill_manual(values = rev(colorBlue[c(1,3,5,7)]), drop=FALSE) +
+      geom_tile(color = "white", size = 1) + 
       geom_text(aes(label=round(pvalue, 3))) +
       theme_classic() + theme(axis.ticks = element_blank(),
                               axis.line = element_blank(),
@@ -489,18 +482,6 @@ permPlot <- function(input, output, session, file_input, input_df, fxn, nPerms) 
                               axis.text.y = element_text(vjust=0.3, hjust = 1)) +
       coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
   })
-  
-  dataWithSelection <- reactive({
-    brushedPoints(data(), input$brush, allRows = TRUE)
-  })
-  
-  output$plot1 <- renderPlot({
-    scatterPlot(dataWithSelection(), left())
-  })
-  
-  output$plot2 <- renderPlot({
-    scatterPlot(dataWithSelection(), right())
-  })
-  
-  return(dataWithSelection)
+
+  return(perms)
 }

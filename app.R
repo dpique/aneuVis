@@ -76,7 +76,6 @@ ui <- tagList(shinyjs::useShinyjs(),
                               ),
                       actionButton("submit_fish", "Submit and Go to Table Summary"),
                       hr(),
-                      # p("The structure of an Excel file containing FISH data is shown below."),
                       h3("FISH file structure guide"),
                       
                       img(src="fish_layout_excel.png", width=300),
@@ -151,11 +150,13 @@ ui <- tagList(shinyjs::useShinyjs(),
  
   tabPanel("Table Summary", icon = icon("table"), value = "tableTab",
            actionButton("returnToDataUpload", "Upload additional datasets"),
+           actionButton("goToVisualization", "Continue to visualization"),
+           
            hr(),
            tabsetPanel(
-            tabPanel("Stats Per Treatment", DT::dataTableOutput("sumryStatsTbl")),
-            tabPanel("Stats Per Treatment & Chromosome", DT::dataTableOutput("sumryStatsTblPerChr")),
-            tabPanel("sc-wgs summary", DT::dataTableOutput("g2T"),
+            tabPanel("Stats By Group", DT::dataTableOutput("sumryStatsTbl")),
+            tabPanel("Stats By Group & Chromosome", DT::dataTableOutput("sumryStatsTblPerChr")),
+            tabPanel("SC-WGS Chromosome-level Summary", DT::dataTableOutput("g2T"),
                      p("A 'wide' table of single cell whole genome sequencing (sc-wgs) data is available for download, with chromosomes as columns and samples as rows. 
                       This table contains the weighted average copy number (by bin size) rounded to the nearest integer per chromosome per sample."),
                      downloadButton("g2T.d", "Download")
@@ -205,11 +206,12 @@ ui <- tagList(shinyjs::useShinyjs(),
                    img(src="expl_summary_stat.png", width=600)
             #)
           ),
-  tabPanel("Visualization", icon = icon("bar-chart-o"),  #icon = icon("heatmap"), #
+  tabPanel("Visualization", icon = icon("bar-chart-o"), value = "visTab",  #icon = icon("heatmap"), #
            tabsetPanel(
              tabPanel("Scores by Group",
                       h3("Scatterplot of Aneuploidy and Heterogeneity Score by Group"),
-                      plotOutput("aneuHeteroSctrPlt"),
+                      plotOutput("aneuHeteroSctrPlt", brush = "brush_aneuHeteroSctrPlt"),
+                      verbatimTextOutput("brush_info_aneuHeteroSctrPlt"),
                       hr(),
                       plotOutput("ternPlot"),
                       hr(),
@@ -218,15 +220,16 @@ ui <- tagList(shinyjs::useShinyjs(),
                         For example, a point near 'Diploid' would mean that most of the cells within that group
                         are diploid.")),
              tabPanel("Scores by Group & Chromosome",
-                      plotOutput("aneuHeteroSctrPltPerChr")
+                      plotOutput("aneuHeteroSctrPltPerChr", brush = "brush_aneuHeteroSctrPltPerChr"),
+                      verbatimTextOutput("brush_info_aneuHeteroSctrPltPerChr")
              ),
              tabPanel("FISH", 
                       fluidRow(
-                        column(2,
+                        column(4,
                                h4("Interpreting a gridplot"),
                                img(src="expl_gridplot.png", width=250)
                         ),
-                        column(10,
+                        column(8,
                                p("Bivariate chromosome gridplots show the percentage of cells
                         associated with the indicated number of chromosomes."),
                                p("The diploid state (2 copies of each chromosome) is indicated in bold"),
@@ -235,37 +238,39 @@ ui <- tagList(shinyjs::useShinyjs(),
                         )
                       ),
                       uiOutput("gridPlots")),
-             tabPanel("sc-WGS", plotOutput("chrHeatG2")),
-             tabPanel("SKY", plotOutput("chrHeatS2")),
-             tabPanel("Permutations",
-                      h3("Are the groups that we see statistically significantly different from each other
-                        in terms of the degree of numerical aneuploidy?"),
-                      p("Methods: 250 random permutations of the category associated with each observed cell. 
-                        The difference in ANCA scores between all possible pairs of categories is calculated after each permutation. 
-                        A p-value is calculated by counting how many permuted ANCA scores are more extreme than
-                        the observed ANCA score."),
-                        p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
-                        between a given pair of groups. there two possible interpretations of the resulting p-value:
-                        not significantly different (p > 0.05, grey color) or significantly different (red color)."),
-                      h3("Single cell Whole Genome Sequencing data permutations"),
+             tabPanel("SC-WGS", plotOutput("chrHeatG2")),
+             tabPanel("SKY", plotOutput("chrHeatS2"))
+
+           )),
+           tabPanel("Hypothesis Testing", icon = icon("random"),
+                    h3("Are the groups that we see statistically significantly different from each other
+                                in terms of the degree of numerical aneuploidy?"),
+                    p("Methods: Generate random permutations of the category associated with each observed cell. 
+                      The difference in ANCA scores between all possible pairs of categories is calculated after each permutation. 
+                      A p-value is calculated by counting how many permuted ANCA scores are more extreme than
+                      the observed ANCA score."),
+                    p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
+                      between a given pair of groups. there two possible interpretations of the resulting p-value:
+                      not significantly different (p > 0.05, grey color) or significantly different (red color)."),
+                    
+                    tabsetPanel(
+                      tabPanel("FISH", 
+                               permPlotTblUI("fish", header = "FISH")),#, type="html", loader="dnaspin")),
+                               #permPlotTblUI("fish", header = "FISH")),
                       
-                       withLoader(tableOutput("permTableg2R"), type="html", loader="dnaspin"),
-                      withLoader(plotOutput("permPlotg2R"), type="html", loader="dnaspin"),
-                      #tableOutput("permTableg2R"),
-                      #plotOutput("permPlotg2R"), 
-                      hr(),
-                      #withLoader(tableOutput("permTables2R"), type="html", loader="dnaspin"),
-                      #withLoader(tableOutput("permPlots2R"), type="html", loader="dnaspin"),
-                      h3("SKY data permutations"),
-                      tableOutput("permTables2R"), plotOutput("permPlots2R"),
-                      hr(),
-                      h3("FISH data permutations"),
-                      #withLoader(tableOutput("permTablef1R"), type="html", loader="dnaspin"),
-                      #withLoader(tableOutput("permPlotf1R"), type="html", loader="dnaspin"))
-                      
-                      tableOutput("permTablef1R"), plotOutput("permPlotf1R") ) 
-           ))))
- 
+                      tabPanel("SC-WGS", 
+                               permPlotTblUI("sc-wgs", header = "Single Cell Whole Genome Sequencing")),
+                      tabPanel("SKY", 
+                               permPlotTblUI("sky", header = "SKY"))#
+                               #permPlotTblUI("sky2", header = "SKY2")
+                               
+                               )
+                    )))
+#withLoader(tableOutput("permTablef1R"), type="html", loader="dnaspin"),
+#withLoader(tableOutput("permPlotf1R"), type="html", loader="dnaspin"))
+
+#tableOutput("permTablef1R"), plotOutput("permPlotf1R"),
+#hr(), hr(), #p("single cell wgs"), 
 
 
 
@@ -451,9 +456,12 @@ server <- shinyServer(function(input, output, session) {
     aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score)
     print(aneupl_scores)
     heterog_scores = purrr::map_df(.x = list_to_pass, .f = calc_heterog_score)
+    anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized)
     anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score)
+    instab_idx = purrr::map_df(.x = list_to_pass, .f = calc_instab_idx)
     perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy)
-    sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores, perc_ploidy), full_join, by=c("category", "file_type")) 
+    sumStats <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
+      select(category, file_type, n, everything())
     return(sumStats)
   })
   
@@ -465,15 +473,18 @@ server <- shinyServer(function(input, output, session) {
     DT::datatable(stsTbl(),       
                   filter = list(position = 'top', clear = FALSE),
                   options = list(
-                    search = list(regex = TRUE, caseInsensitive = FALSE))) %>% DT::formatRound(c(2, 4:5, 7:9), 2)
+                    search = list(regex = TRUE, caseInsensitive = FALSE))) %>% DT::formatRound(c(4:11), 2)
   })
   
   stsTblPerChr <- reactive({
     list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
     aneupl_scores = purrr:::map_df(.x = list_to_pass, .f = calc_aneupl_score, retChr = TRUE)
     heterog_scores = purrr:::map_df(.x = list_to_pass, .f = calc_heterog_score, retChr = TRUE)
-    anca_scores = purrr:::map_df(.x = list_to_pass, .f = calc_anca_score, retChr = TRUE)
-    sumStats <- purrr::reduce(list(anca_scores, aneupl_scores,heterog_scores), full_join, by=c("category","file_type", "chr")) 
+    #anca_scores = purrr:::map_df(.x = list_to_pass, .f = calc_anca_score, retChr = TRUE)
+    anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized, retChr = TRUE)
+    #select(category, file_type, n, everything())
+    sumStats <- purrr::reduce(list(aneupl_scores,heterog_scores, anca_scores_normalized), full_join, by=c("category","file_type", "chr")) %>%
+      select(category, file_type, n, everything())
     return(sumStats)
   })
   
@@ -485,7 +496,7 @@ server <- shinyServer(function(input, output, session) {
                          filter = list(position = 'top', clear = FALSE),
                          options = list(
                            search = list(regex = TRUE, caseInsensitive = FALSE))) %>%
-    DT::formatRound(c(3,5,6), 2)
+    DT::formatRound(5:7, 2)
   })
   
  #output$sumryStatsTblPerChr = downloadHandler('sumStatsTblPerChr-filt.csv', content = function(file) {
@@ -524,14 +535,13 @@ server <- shinyServer(function(input, output, session) {
                           color = category, shape= file_type)) +  #paste0(file_type, ": ",category))) + #category, shape=file_type)) + 
       geom_point( size=4, alpha=0.8) + theme_classic() +
       coord_fixed(ratio = 1)
-    
-    #p <- ggplot(stsTbl(), aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
-    #                          fill = category, shape= factor(file_type))) +  #paste0(file_type, ": ",category))) + #category, shape=file_type)) + 
-    #  geom_point(pch=21, size=4, stroke = 1, alpha=0.4) + theme_classic() +
-    #  coord_fixed(ratio = 1)
       
     return(p2)
     #NULL
+  })
+  
+  output$brush_info_aneuHeteroSctrPlt <- renderPrint({
+    brushedPoints(data.frame(stsTbl()), input$brush_aneuHeteroSctrPlt)
   })
   
   output$aneuHeteroSctrPltPerChr <- renderPlot({
@@ -543,6 +553,10 @@ server <- shinyServer(function(input, output, session) {
     
     return(p)
     #NULL
+  })
+  
+  output$brush_info_aneuHeteroSctrPltPerChr <- renderPrint({
+    brushedPoints(data.frame(stsTblPerChr()), input$brush_aneuHeteroSctrPltPerChr)
   })
   
   ##### 2018-05-06 adding heatmaps
@@ -657,103 +671,17 @@ server <- shinyServer(function(input, output, session) {
   })
   
   
-  #### adding permutation plots
-  permsG2R <- reactive({
-    validate(
-      need(!is.null(input$wgs_file), 'Please upload at least 1 sc-wgs file.')
-    ) 
-    
-    nPerms <- 250
-    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
-    fxn <- calc_anca_score #calc_heterog_score#calc_aneupl_score
-    g2r_perm_df = retPermPlotDf(input_df = g2R(), fxn, nPerms = nPerms)
-    return(g2r_perm_df)
-    #lapply(list_to_pass, function(x) retPermPlotDf(x, fxn)) #input_df <- g2R()
-  })
+  #### adding permutation plot modules - 2018-05-12 
+  callModule(permPlotTbl, "fish", file_input = reactive(input$fish_files), #"test", #
+             input_df = f1R, fxn=calc_anca_score, nPerms = reactive(input$Nperms))
+             #permute_action = reactive(input$permute_action))
   
+  callModule(permPlotTbl, "sc-wgs", file_input = reactive(input$wgs_file), #"test", #
+             input_df = g2R, fxn=calc_anca_score, nPerms = reactive(input$Nperms))
   
-  output$permTableg2R <- renderTable({
-    permsG2R()
-  })
-  
-  output$permPlotg2R <- renderPlot({
-    colorRedBlue <- RColorBrewer::brewer.pal(n = 11, name = "RdBu")
-    ggplot(permsG2R(), aes(x=V1, y=V2, fill=pval_cut)) + 
-      geom_tile() + 
-      scale_fill_manual(values = colorRedBlue[c(3:9)], drop=FALSE) +
-      geom_tile(color = "white", size = 1) + #scale_fill_distiller(direction = 1) +
-      geom_text(aes(label=round(pvalue, 3))) +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
-                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
-    })
+  callModule(permPlotTbl, "sky", file_input = reactive(input$sky_file), #"test", #
+             input_df = s2R, fxn=calc_anca_score, nPerms = reactive(input$Nperms))
 
-  
-  permsS2R <- reactive({
-    validate(
-      need(!is.null(input$sky_file), 'Please upload at least 1 SKY file.')
-    ) 
-    
-    nPerms <- 250
-    fxn <- calc_anca_score #calc_heterog_score#calc_aneupl_score
-    s2r_perm_df = retPermPlotDf(input_df = s2R(), fxn, nPerms = nPerms)
-    return(s2r_perm_df)
-  })
-  
-  
-  output$permTables2R <- renderTable({
-    permsS2R()
-  })
-  
-  output$permPlots2R <- renderPlot({
-    colorRedBlue <- RColorBrewer::brewer.pal(n = 11, name = "RdBu")
-    ggplot(permsS2R(), aes(x=V1, y=V2, fill=pval_cut)) + 
-      geom_tile() + 
-      scale_fill_manual(values = colorRedBlue[c(3:9)], drop=FALSE) +
-      geom_tile(color = "white", size = 1) + #scale_fill_distiller(direction = 1) +
-      geom_text(aes(label=round(pvalue, 3))) +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
-                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
-  })
-  
-  
-  permsF1R <- reactive({
-    validate(
-      need(!is.null(input$fish_files), 'Please upload at least 1 FISH file.')
-    ) 
-    
-    nPerms <- 250
-    #list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
-    fxn <- calc_anca_score #calc_heterog_score#calc_aneupl_score
-    f1r_perm_df = retPermPlotDf(input_df = f1R(), fxn, nPerms = nPerms)
-    return(f1r_perm_df)
-    #lapply(list_to_pass, function(x) retPermPlotDf(x, fxn)) #input_df <- g2R()
-  })
-  
-  
-  output$permTablef1R <- renderTable({
-    permsF1R()
-  })
-  
-  output$permPlotf1R <- renderPlot({
-    colorRedBlue <- RColorBrewer::brewer.pal(n = 11, name = "RdBu")
-    ggplot(permsF1R(), aes(x=V1, y=V2, fill=pval_cut)) + 
-      geom_tile() + 
-      scale_fill_manual(values = colorRedBlue[c(3:9)], drop=FALSE) +
-      geom_tile(color = "white", size = 1) + #scale_fill_distiller(direction = 1) +
-      geom_text(aes(label=round(pvalue, 3))) +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
-                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
-  })
-  
   ###### adding shinyjs buttons - redirection 2018-05-10
   
   observeEvent(input$submit_fish, {
@@ -794,6 +722,11 @@ server <- shinyServer(function(input, output, session) {
   observeEvent(input$returnToDataUpload, {
     updateTabsetPanel(session, "inTabset",
                       selected = "uploadTab")
+  })
+  
+  observeEvent(input$goToVisualization, {
+    updateTabsetPanel(session, "inTabset",
+                      selected = "visTab")
   })
   
 
