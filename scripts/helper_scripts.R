@@ -4,7 +4,7 @@ classifPloidy = function(x){
   x_u_sum <- sum(x_u)
   if(x_u_sum == 2){
     return("diploid")
-  } else if(length(unique(x)) == 1){
+  } else if(length(x_u) == 1 & (!all(x == 1))) { #all ones!
     return("polyploid")
   }
   return("aneuploid")
@@ -294,8 +294,8 @@ calc_anca_score <-  function(chr_tbl, numX=2, numY=1) {
   chr_tbl %>% 
     mutate(diploid_bin = num_chr == 2) %>%
     #mutate(diploid_bin = ifelse(chr == "Y" & num_chr == 1, TRUE, diploid_bin)) %>%
-    mutate(diploid_bin = ifelse(chr == "Y", num_chr == numY, diploid_bin)) %>% #& num_chr == numY, TRUE, diploid_bin)) %>%
-    mutate(diploid_bin = ifelse(chr == "X", num_chr == numX, diploid_bin)) %>% #& num_chr == numY, TRUE, diploid_bin)) %>%
+    mutate(diploid_bin = ifelse(chr == "Y", num_chr == numY, diploid_bin)) %>% 
+    mutate(diploid_bin = ifelse(chr == "X", num_chr == numX, diploid_bin)) %>% 
     group_by(category, diploid_bin, file_type) %>% 
     summarise (n = n()) %>%
     spread(key = diploid_bin, value=n) %>%
@@ -308,7 +308,29 @@ calc_anca_score <-  function(chr_tbl, numX=2, numY=1) {
 
 
 
-calc_perc_ploidy <-  function(chr_tbl) {
+
+calc_perc_ploidy <-  function(chr_tbl, numX, numY) {
+  cat_file_type <- chr_tbl %>% 
+    select(category, file_type) %>% 
+    distinct()
+  
+  chr_tbl %>%
+    spread(chr, num_chr) %>% 
+    mutate_at(vars(starts_with("Y", ignore.case = TRUE)), .funs=~ifelse(. == numY, 2, 3)) %>% #convert X and Y to appropriate ploidy
+    mutate_at(vars(starts_with("X", ignore.case = TRUE)), .funs=~ifelse(. == numX, 2, 3)) %>%
+    mutate(ploidy =  apply(.[,4:ncol(.)], 1, classifPloidy)) %>% 
+    select(category, ploidy, file_type) %>% 
+    mutate(ploidy = factor(ploidy, levels=c("diploid", "polyploid", "aneuploid"))) %>%
+    group_by(category, ploidy) %>% 
+    summarize(n=n()) %>% 
+    mutate(freq=n/sum(n)) %>%
+    tidyr::complete(ploidy, fill = list(n = 0, freq=0))%>%
+    left_join(cat_file_type, by="category") %>%
+    select(-n) %>%
+    spread(ploidy, freq)
+}
+
+calc_perc_ploidy_old <-  function(chr_tbl) {
   cat_file_type <- chr_tbl %>% 
     select(category, file_type) %>% 
     distinct()
@@ -326,6 +348,7 @@ calc_perc_ploidy <-  function(chr_tbl) {
     select(-n) %>%
     spread(ploidy, freq)
 }
+
 
 
 calc_instab_idx <-  function(chr_tbl) {
@@ -447,14 +470,22 @@ permPlotTblUI <- function(id, header) {
     sliderInput(ns("Nperms"), "Number of permutations:",
                 min = 0, max = 5000, value = 500, step = 500
     ),
+    selectInput(ns("fxn_to_perm"), "Select the score to permute", 
+                choices=c("Aneuploidy Score" = "calc_aneupl_score",
+                          "Heterogeneity Score" = "calc_heterog_score",
+                          "Normalized ANCA Score" = "calc_anca_score_normalized",
+                          "ANCA Score" = "calc_anca_score")),
+                          #"Instability index" = "calc_instab_idx")),
     actionButton(ns("permute_action"), "Permute"),
+    p("Please wait for a few minutes for the permutation..."),
       tableOutput(ns("permTbl")),
      plotOutput(ns("permPlot"))
   )
 }
 
+#match.fun("calc_heterog_score")
 
-permPlotTbl <- function(input, output, session, file_input, input_df, fxn, nPerms) {
+permPlotTbl <- function(input, output, session, file_input, input_df, nPerms) {
   #add file_type for validate
   # Yields the data frame with an additional column "selected_"
   # that indicates whether that observation is brushed
@@ -471,7 +502,8 @@ permPlotTbl <- function(input, output, session, file_input, input_df, fxn, nPerm
   #})
   
   perms <- eventReactive(input$permute_action, {
-    perm_df = retPermPlotDf(input_df = input_df(), fxn, nPerms = input$Nperms)
+    perm_df = retPermPlotDf(input_df = input_df(), 
+                            fxn = match.fun(input$fxn_to_perm), nPerms = input$Nperms)
     return(perm_df)
   })
   

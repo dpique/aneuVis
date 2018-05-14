@@ -46,7 +46,8 @@ ui <- tagList(shinyjs::useShinyjs(),
                            tags$a(target = "_blank", 
                                   href = "http://www.einstein.yu.edu/faculty/12990/jessica-mar/", 
                                   "Mar"), "(computational biology) labs at Albert Einstein College of Medicine."),
-                         p("All source code is available on github."),
+                         p("All source code is available on", tags$a(target = "_blank", 
+                                                               href = "https://github.com/dpique/aneuVis", "Github")),
                          p("Aneuvis was created using", tags$a(target = "_blank", 
                                                                href = "http://shiny.rstudio.com/", 
                                                                "Shiny"), "version 1.0.5 (R version 3.4.3) and is available under a GPLv3 license"),
@@ -218,6 +219,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     plotOutput("aneuHeteroSctrPlt", brush = "brush_aneuHeteroSctrPlt"),
                                     verbatimTextOutput("brush_info_aneuHeteroSctrPlt"),
                                     hr(),
+                                    h3("Ternary Plot of Proportion of Diploid, Polyploid, and Aneuploid Cells by Group"),
                                     plotOutput("ternPlot"),
                                     hr(),
                                     p("Ternary plots are used to represent proportions of 3 groups that sum to 1"),
@@ -267,8 +269,13 @@ ui <- tagList(shinyjs::useShinyjs(),
                 tabPanel("Hypothesis Testing", icon = icon("random"),
                          h3("Are groups statistically significantly different from each other
                             in terms of the degree of numerical aneuploidy?"),
+                         p("How to use this page:"),
+                         p("Three steps: 1. Select the tab of the data type you would like to permute"),
+                         p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
+                         p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
+                           the number of permutations."),
                          p("Methods: Generate random permutations of the category associated with each observed cell. 
-                           The difference in ANCA scores between all possible pairs of categories is calculated after each permutation. 
+                           The difference in scores between all possible pairs of categories is calculated after each permutation. 
                            A p-value is calculated by counting how many permuted ANCA scores are more extreme than
                            the observed ANCA score."),
                          p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
@@ -496,7 +503,7 @@ server <- shinyServer(function(input, output, session) {
     anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized, numX=numX, numY=numY)
     anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score, numX=numX, numY=numY)
     instab_idx = purrr::map_df(.x = list_to_pass, .f = calc_instab_idx)
-    perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy)
+    perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy, numX=numX, numY=numY)
     sumStats <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
       select(category, file_type, n, everything())
     return(sumStats)
@@ -717,14 +724,15 @@ server <- shinyServer(function(input, output, session) {
   
   #### adding permutation plot modules - 2018-05-12 
   callModule(permPlotTbl, "fish", file_input = reactive(input$fish_files), #"test", #
-             input_df = f1R, fxn=calc_anca_score, nPerms = reactive(input$Nperms))
+             input_df = f1R, 
+             nPerms = reactive(input$Nperms))
   #permute_action = reactive(input$permute_action))
   
   callModule(permPlotTbl, "sc-wgs", file_input = reactive(input$wgs_file), #"test", #
-             input_df = g2R, fxn=calc_anca_score, nPerms = reactive(input$Nperms))
+             input_df = g2R, nPerms = reactive(input$Nperms))
   
   callModule(permPlotTbl, "sky", file_input = reactive(input$sky_file), #"test", #
-             input_df = s2R, fxn=calc_anca_score, nPerms = reactive(input$Nperms))
+             input_df = s2R, nPerms = reactive(input$Nperms))
   
   ###### adding shinyjs buttons - redirection 2018-05-10
   
