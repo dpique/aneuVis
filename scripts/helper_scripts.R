@@ -222,10 +222,12 @@ calc_heterog_score <- function(chr_tbl, retChr = FALSE){ #also returns "n"
 }
 
 
-calc_aneupl_score <- function(chr_tbl, retChr = FALSE){
+calc_aneupl_score <- function(chr_tbl, retChr = FALSE, numX=2, numY=1){
   if(retChr){
     aneupl_tbl <- chr_tbl %>%
       mutate(ideal_nchr = 2) %>%
+      mutate(ideal_nchr = ifelse(chr == "X", numX, ideal_nchr)) %>% #2018-05-14
+      mutate(ideal_nchr = ifelse(chr == "Y", numY, ideal_nchr)) %>% #2018-05-14
       mutate(ideal_obs_diff = abs(ideal_nchr - num_chr)) %>%
       group_by(category, chr, file_type) %>% 
       summarize(sum_ideal_obs_diff = sum(ideal_obs_diff), n_bins_times_n_cells_per_group = n()) %>%
@@ -237,6 +239,8 @@ calc_aneupl_score <- function(chr_tbl, retChr = FALSE){
   }
   chr_tbl %>%
     mutate(ideal_nchr = 2) %>%
+    mutate(ideal_nchr = ifelse(chr == "X", numX, ideal_nchr)) %>% #2018-05-14
+    mutate(ideal_nchr = ifelse(chr == "Y", numY, ideal_nchr)) %>% #2018-05-14
     mutate(ideal_obs_diff = abs(ideal_nchr - num_chr)) %>%
     group_by(category, file_type) %>% 
     summarize(sum_ideal_obs_diff = sum(ideal_obs_diff), n_bins_times_n_cells_per_group = n()) %>%
@@ -246,9 +250,12 @@ calc_aneupl_score <- function(chr_tbl, retChr = FALSE){
 }
 
 
-calc_anca_score_normalized <-  function(chr_tbl, retChr = FALSE) {
+calc_anca_score_normalized <-  function(chr_tbl, retChr = FALSE, numX=2, numY=1) {
   if(retChr){
-    anca_tbl <- chr_tbl %>% mutate(diploid_bin = num_chr == 2) %>%
+    anca_tbl <- chr_tbl %>% 
+      mutate(diploid_bin = num_chr == 2) %>%
+      mutate(diploid_bin = ifelse(chr == "Y", num_chr == numY, diploid_bin)) %>% #& num_chr == numY, TRUE, diploid_bin)) %>%
+      mutate(diploid_bin = ifelse(chr == "X", num_chr == numX, diploid_bin)) %>% #& num_chr == numY, TRUE, diploid_bin)) %>%
       group_by(category, diploid_bin, chr, file_type) %>% 
       summarise (n = n()) %>%
       spread(key = diploid_bin, value=n) %>%
@@ -260,7 +267,10 @@ calc_anca_score_normalized <-  function(chr_tbl, retChr = FALSE) {
     return(anca_tbl)
   }
   #2018-05-12
-  chr_tbl %>% mutate(diploid_bin = num_chr == 2) %>%
+  chr_tbl %>% 
+    mutate(diploid_bin = num_chr == 2) %>%
+    mutate(diploid_bin = ifelse(chr == "Y", num_chr == numY, diploid_bin)) %>% #& num_chr == numY, TRUE, diploid_bin)) %>%
+    mutate(diploid_bin = ifelse(chr == "X", num_chr == numX, diploid_bin)) %>% #& num_chr == numY, TRUE, diploid_bin)) %>%
     group_by(category, diploid_bin, file_type) %>% 
     summarise (n = n()) %>%
     spread(key = diploid_bin, value=n) %>%
@@ -271,7 +281,7 @@ calc_anca_score_normalized <-  function(chr_tbl, retChr = FALSE) {
     #mutate(categ_file_type = paste0(category, "_",file_type))
 }
 
-calc_anca_score <-  function(chr_tbl) {
+calc_anca_score <-  function(chr_tbl, numX=2, numY=1) {
   #chr_tbl$file_type <- "sky"
   #chr_tbl %>% select(smpl, category) %>% distinct() %>% group_by(category)  %>% count()
   #unique(chr_tbl$smpl)
@@ -283,6 +293,9 @@ calc_anca_score <-  function(chr_tbl) {
   #2018-05-12
   chr_tbl %>% 
     mutate(diploid_bin = num_chr == 2) %>%
+    #mutate(diploid_bin = ifelse(chr == "Y" & num_chr == 1, TRUE, diploid_bin)) %>%
+    mutate(diploid_bin = ifelse(chr == "Y", num_chr == numY, diploid_bin)) %>% #& num_chr == numY, TRUE, diploid_bin)) %>%
+    mutate(diploid_bin = ifelse(chr == "X", num_chr == numX, diploid_bin)) %>% #& num_chr == numY, TRUE, diploid_bin)) %>%
     group_by(category, diploid_bin, file_type) %>% 
     summarise (n = n()) %>%
     spread(key = diploid_bin, value=n) %>%
@@ -382,7 +395,6 @@ retPermPlotDf <- function(input_df, fxn, nPerms){
   obs_dist2 <- as.vector(obs_dist) %>% as_tibble() %>% rename(obs_val = value)
   
   shuf_dists_sd <- lapply(shuf_dists, as.vector) 
-  #dim(as.matrix(shuf_dists[[1]]))
   shuf_dists_ci <- do.call(rbind, shuf_dists_sd) %>% 
     apply(2, quantile, c(0.025, 0.975)) %>% 
     t() %>% 
