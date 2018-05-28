@@ -4,7 +4,8 @@ library(tidyverse)
 library(here)
 library(janitor)
 library(ggtern)
-library(shinycustomloader)
+#library(shinycustomloader)
+library(RColorBrewer)
 
 #library(DT)
 source("scripts/helper_scripts.R")
@@ -69,6 +70,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                          tabsetPanel(
                            tabPanel("FISH",
                                     h3("Upload fluorescence in situ hybridization (FISH) data"),
+                                    p("Note: All FISH files to be compared must be uploaded together; otherwise, files will overwrite each other if uploaded 1 by 1."),
                                     fileInput(
                                       inputId = "fish_files", #files
                                       label = ".xlsx or .xls", #, see file structure guide below",
@@ -76,12 +78,15 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv")
                                     ),
                                     actionButton("submit_fish", "Submit and Go to Table Summary"),
+                                    #actionButton('reset_fish', 'Reset Input'),
+                                    #Resetting input: https://gist.github.com/bborgesr/07406b30ade8a011e59971835bf6c6f7
+                                    textOutput("fish_summary"),
                                     hr(),
                                     h3("FISH file structure guide"),
                                     
                                     img(src="fish_layout_excel.png", width=300),
                                     p("Multiple excel files, each with the same # of chromosomes, can be uploaded."),
-                                    p("All files *must* have same column names in row 1. Ex. Chr17 and Chr 17 are differnt"), 
+                                    p("All files *must* have same column names in row 1. Ex. Chr17 and Chr 17 are different"), 
                                     p("Each file will be treated as a separate 'condition'."),
                                     p("The name of each file (before the .xls or .xlsx extension) will be the 'category' "),
                                     hr(),
@@ -205,13 +210,14 @@ ui <- tagList(shinyjs::useShinyjs(),
                              )
                              )),
                          p("A tabular and visual representation of the summary statistics is shown below"),
-                         # fluidRow(
-                         #column(6,
-                         #column(6, 
-                         img(src="expl_summary_stat.png", width=600)
-                         #)
+                         img(src="expl_summary_stat.png", width=900),
+                         img(src="expl_summary_stat3.png", width=900)
+
                          ),
                 tabPanel("Visualization", icon = icon("bar-chart-o"), value = "visTab",  #icon = icon("heatmap"), #
+                         downloadButton("report", label="Download visualizations (.pdf)", class = "butt"),
+                         #tags$head(tags$style(".butt{background-color:#add8e6; color:red}")), # background color and font color
+                         
                          tabsetPanel(
                            tabPanel("Scores by Group",
                                     h3("Scatterplot of Aneuploidy and Heterogeneity Score by Group"),
@@ -292,23 +298,16 @@ ui <- tagList(shinyjs::useShinyjs(),
                          
                          tabsetPanel(
                            tabPanel("FISH", 
-                                    permPlotTblUI("fish", header = "FISH")),#, type="html", loader="dnaspin")),
-                           #permPlotTblUI("fish", header = "FISH")),
-                           
+                                    permPlotTblUI("fish", header = "FISH")),
                            tabPanel("SC-WGS",
                                     permPlotTblUI("sc-wgs", header = "Single Cell Whole Genome Sequencing")),
                            tabPanel("SKY", 
-                                    permPlotTblUI("sky", header = "SKY"))#
-                           #permPlotTblUI("sky2", header = "SKY2")
-                           
+                                    permPlotTblUI("sky", header = "SKY")),
+                           tabPanel("Multiplatform summary"),
+                           tabPanel("Comparing data types")
+
                          )
                          )))
-#withLoader(tableOutput("permTablef1R"), type="html", loader="dnaspin"),
-#withLoader(tableOutput("permPlotf1R"), type="html", loader="dnaspin"))
-
-#tableOutput("permTablef1R"), plotOutput("permPlotf1R"),
-#hr(), hr(), #p("single cell wgs"), 
-
 
 
 server <- shinyServer(function(input, output, session) {
@@ -395,7 +394,46 @@ server <- shinyServer(function(input, output, session) {
   })
   
   
-  f1R <- eventReactive(input$submit_fish, ignoreNULL = FALSE, {
+  values_fish <- reactiveValues(
+    upload_state = NULL
+  )
+  
+  observeEvent(input$submit_fish, {
+    values_fish$upload_state <- 'uploaded'
+  })
+  
+  observeEvent(input$reset_fish, {
+    values_fish$upload_state <- 'reset'
+  })
+  
+  file_input_fish <- reactive({
+    if (is.null(values_fish$upload_state)) {
+      return(NULL)
+    } else if (values_fish$upload_state == 'uploaded') {
+      return(input$submit_fish)
+    } else if (values_fish$upload_state == 'reset') {
+      return(NULL)
+    }
+  })
+  
+  
+  #ff <- eventReactive({input$fish_files,
+  #})
+                
+  output$fish_summary <- renderText({
+    if(is.null(values_fish$upload_state)){
+      return("No files uploaded. Submit a set of files.")# or resubmit previously uploaded files with 'Submit and Go to Table Summary'")
+    } else if(!is.null(file_input_fish())){
+      return(paste("Uploaded file(s):", paste0(input$fish_files$name, collapse="; ")))#  map_chr(.x = , .f = paste0, collapse="; ")))
+    } else if(is.null(file_input_fish())){
+      return("Files cleared. Submit a new set of files or resubmit previously uploaded files with 'Submit and Go to Table Summary'")
+    }
+  })
+    
+
+  #
+  #file_input_fish()
+  f1R <- eventReactive(input$submit_fish, ignoreNULL=FALSE, {#values_fish$upload_state, ignoreNULL=FALSE, {#file_input_fish(), ignoreNULL = FALSE, {
     #validate(need(input$fish_files != "", "..."))
     
     if (is.null(input$fish_files)) {
@@ -627,7 +665,7 @@ server <- shinyServer(function(input, output, session) {
       separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
       mutate(row_numb=as.numeric(row_numb)) %>%
       arrange(categ, row_numb) %>%
-      mutate(category = factor(category,levels=unique(category))) 
+      mutate(category = factor(category,levels=unique(category)))  #2018-05-27
     return(g2_to_g4)
   })
   
@@ -851,6 +889,38 @@ server <- shinyServer(function(input, output, session) {
       })
     })
   }
+  
+  ### generate rmarkdown report
+  output$report <- downloadHandler(
+    # For PDF output, change this to "report.pdf"
+    filename = paste0(Sys.Date(),"-aneuvis-report.pdf"),
+    content  = function(file) {
+      # Copy the report file to a temporary directory before processing it, in
+      # case we don't have write permissions to the current working dir (which
+      # can happen when deployed).
+      tempReport <- file.path(tempdir(), "report2.Rmd")
+      file.copy("report2.Rmd", tempReport, overwrite = TRUE)
+      
+      # Set up parameters to pass to Rmd document
+      params <- list(fish_files = input$fish_files, 
+                     sky_file = input$sky_file,
+                     wgs_file = input$wgs_file,
+                     wgs_key = input$wgs_key,
+                     numbX = numbX(), numbY = numbY(),
+                     stsTbl = stsTbl(),
+                     stsTblPerChr=stsTblPerChr(),
+                     g4 = g4R())
+
+      # Knit the document, passing in the `params` list, and eval it in a
+      # child of the global environment (this isolates the code in the document
+      # from the code in this app).
+      rmarkdown::render(tempReport, output_file = file,
+                        params = params,
+                        envir = new.env(parent = globalenv())
+      )
+    }#, input$fish_files$name
+  )
+      
   
 })
 

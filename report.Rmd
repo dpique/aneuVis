@@ -1,0 +1,207 @@
+---
+title: "Aneuvis Report - Visualizations"
+author: "aneuvis 0.6"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: pdf_document
+params:
+  fish_files: NA
+  numbX: NA
+  numbY: NA
+  sky_file: NA
+  wgs_file: NA
+  wgs_key: NA
+  stsTbl: NA
+  stsTblPerChr: NA
+---
+
+This report was automatically generated from [Aneuvis](https://dpique.shinyapps.io/aneuvis/), a web tool for analyzing chromosomal number variation in single cells. Aneuvis summarizes chromosomal copy number data from 3 potential sources: FISH, SKY, and WGS. Below is a summary of the files and data types used in this analysis:
+
+FISH: Here we analyze file type(s) from have `r length(params$fish_files$name)` files: `r params$fish_files$name`
+
+
+```{r}
+# The `params` object is available in the document.
+params$fish_files$name
+```
+
+
+```{r}
+#params$fish_files
+```
+
+processed fish data
+```{r}
+library(tidyverse)
+library(readxl)
+maxChr = 8
+maxChrPlus1 = maxChr + 1
+
+path_list <- as.list(params$fish_files$name)
+tbl_list <- lapply(params$fish_files$datapath, read_excel)
+f1 <- map2(.x = path_list, .y= tbl_list,
+           .f = ~data.frame(category=.x, .y) %>% clean_names) %>%
+  do.call(rbind, .) %>% 
+  as_tibble() %>% 
+  clean_names() %>%
+  mutate(smpl = paste0(1:n(), ";",category)) %>%
+  mutate(category = as.character(category)) %>%
+  gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
+  mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
+  mutate(chr = factor(chr, levels=c(1:22, "X", "Y"))) %>%
+  mutate(file_type = "fish") %>%
+  mutate(category = tools::file_path_sans_ext(category)) %>%
+  .[ , order(names(.))] 
+head(f1)
+```
+
+
+Process sky data:
+```{r}
+s1 <- read_excel(params$sky_file$datapath) %>% 
+  clean_names() %>%
+  filter(rowSums(is.na(.)) <= .50*ncol(.)) %>% #remove rows where > 50% of values are na
+  filter(.[,1] != "Chr. No.") %>%
+  set_names(nm=.[1,]) %>%
+  .[-1,] %>%
+  clean_names()
+
+category_s1 <- s1 %>% filter(.[,1] == "Category") %>% 
+  gather(smpl, category, 2:ncol(.)) %>%
+  select(-cell)
+
+s2 <- s1 %>% 
+  filter(.[,1] != "Category") %>%
+  mutate_at(vars(starts_with("x")), 
+            .funs = funs(ifelse(str_detect(., ","), 
+                                str_split_fixed(., ",", n=2)[1,1], .))) %>%
+  mutate_at(vars(starts_with("x")), .funs = as.numeric) %>%
+  gather(key = smpl, value = num_chr, 2:ncol(.)) %>%
+  rename(chr = "cell") %>%
+  mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
+  left_join(category_s1, by="smpl") %>%
+  mutate(file_type = "sky") %>%
+  mutate(chr = factor(chr, levels=c(1:22, "X", "Y"))) %>%
+  .[ , order(names(.))]
+
+print(s2)
+```
+
+Process sc-wgs data:
+```{r}
+
+if (is.null(params$wgs_file)) {
+  g2 <- NULL #return(NULL)
+} else {
+  path_list <- as.list(params$wgs_file$datapath)
+#fileinput: 'name', 'size', 'type' and 'datapath'.
+tbl_list <- lapply(path_list, read_delim, delim="\t")
+
+g <- map2(.x = path_list, .y= tbl_list,
+          .f = ~data.frame(category=.x, .y)) %>% 
+  do.call(rbind, .) %>% 
+  as_tibble() %>% 
+  .[,colSums(!is.na(.)) > 0] %>%
+  select(-category)
+
+gK <- read_excel(path = params$wgs_key$datapath[1], sheet = 1)
+
+g2 <- g %>% 
+  gather(key = smpl, value=cp_nm, 4:ncol(.)) %>% 
+  group_by(CHR, smpl) %>% 
+  mutate(bin_size = END - START) %>%
+  summarise(num_chr = round(weighted.mean(x = cp_nm, w = bin_size))) %>% 
+  separate(CHR, c("chrRm", "chr"), sep=3) %>% 
+  dplyr::select(-chrRm) %>% 
+  mutate(chr = factor(chr, levels=c(1:22, "X", "Y")))%>% 
+  left_join(gK, by=c("smpl" = "smpl_id")) %>%
+  mutate(file_type = "sc-wgs") %>%
+  .[ , order(names(.))] 
+
+}
+
+```
+
+
+```{r}
+print(params$numbX)
+numX = as.numeric(params$numbX)
+numY = as.numeric(params$numbY)
+
+list_to_pass <- list(g2, s2, f1) %>% purrr::compact() #2018-05-05 issue here?
+aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score, numX=numX, numY=numY)
+heterog_scores = purrr::map_df(.x = list_to_pass, .f = calc_heterog_score)
+anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized, numX=numX, numY=numY)
+anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score, numX=numX, numY=numY)
+instab_idx = purrr::map_df(.x = list_to_pass, .f = calc_instab_idx)
+perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy, numX=numX, numY=numY)
+sumStats <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
+  select(category, file_type, n, everything())
+
+knitr::kable(sumStats)
+```
+
+Ternary plot
+```{r}
+p <- ggtern() + 
+  geom_point(data=params$stsTbl, 
+             aes(x = aneuploid,y=diploid,z=polyploid,
+                 color = category, shape = file_type),
+             size = 3, alpha = 0.8) +
+  xlab("") + ylab("") +
+  Tlab("Diploid") +
+  Llab(" Aneuploid") +
+  Rlab("Polyploid ") +
+  guides(fill=guide_legend(title="Legend")) +
+  limit_tern(1.03,1.03,1.03) 
+print(p)
+```
+
+Scatterplot (group-level summary)
+```{r}
+p2 <- ggplot(params$stsTbl, aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+                           color = category, shape= file_type)) + 
+  geom_point( size=4, alpha=0.8) + theme_classic() +
+  coord_fixed(ratio = 1)
+p2
+```
+
+Scatterplot per chromosome
+```{r}
+p <- ggplot(params$stsTblPerChr, aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+                                color = chr, shape=category)) + 
+  geom_point(size=3) + theme_classic() +
+  coord_fixed(ratio = 1)
+p
+```
+
+
+```{r eval=F}
+   g4.1 <- ggplot(filter(g4R(), chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
+                                                            fill=factor(num_chr, levels=sort(unique(num_chr))))) + 
+      geom_tile(color = "white", size = 1) + 
+      scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(size= 8),
+                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      #coord_fixed(ratio = 1) + 
+      xlab("Chromosome") + ylab("")+ 
+      theme(legend.position="left", 
+            plot.margin=grid::unit(c(0,0,0,0), "mm"),
+            aspect.ratio=1)
+    
+    g4.2 <- ggplot(filter(g4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
+      geom_tile(color = "white", size = 1) + 
+      scale_fill_gradient(low = "white", high = "black" ) +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(size= 8),
+                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      coord_fixed(ratio = 1) + 
+      xlab("n") + ylab("") + 
+      scale_y_discrete(position = "right") + 
+      theme(legend.position="right", 
+            plot.margin=grid::unit(c(0,0,0,0), "mm"))
+    return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
+```
+

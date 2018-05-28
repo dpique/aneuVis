@@ -1,0 +1,154 @@
+---
+title: "Aneuvis Visualizations Report"
+author: "aneuvis 0.6"
+date: "`r format(Sys.time(), '%B %d, %Y')`"
+output: pdf_document
+params:
+  fish_files: NA
+  numbX: NA
+  numbY: NA
+  sky_file: NA
+  wgs_file: NA
+  wgs_key: NA
+  stsTbl: NA
+  stsTblPerChr: NA
+  g4: NA
+---
+
+This report was automatically generated from [Aneuvis](https://dpique.shinyapps.io/aneuvis/), a web tool for analyzing chromosomal number variation in single cells. Aneuvis summarizes chromosomal copy number data from 3 potential sources: FISH, SKY, and WGS. Below is a summary of the files and data types used in this analysis:
+
+FISH: Here we analyze file type(s) from have `r length(params$fish_files$name)` files: `r params$fish_files$name`
+
+
+```{r}
+# The `params` object is available in the document.
+params$fish_files$name
+```
+
+
+
+Ternary plot
+# Scores by Group
+```{r}
+p <- ggtern() + 
+  geom_point(data=params$stsTbl, 
+             aes(x = aneuploid,y=diploid,z=polyploid,
+                 color = category, shape = file_type),
+             size = 3, alpha = 0.8) +
+  xlab("") + ylab("") +
+  Tlab("Diploid") +
+  Llab(" Aneuploid") +
+  Rlab("Polyploid ") +
+  guides(fill=guide_legend(title="Legend")) +
+  limit_tern(1.03,1.03,1.03) 
+print(p)
+```
+
+Scatterplot (group-level summary)
+```{r}
+p2 <- ggplot(params$stsTbl, aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+                           color = category, shape= file_type)) + 
+  geom_point( size=4, alpha=0.8) + theme_classic() +
+  coord_fixed(ratio = 1)
+p2
+```
+
+# Scores by Group and chromosome
+
+```{r}
+## Scores by Group
+p <- ggplot(params$stsTblPerChr, aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
+                                color = chr, shape=category)) + 
+  geom_point(size=3) + theme_classic() +
+  coord_fixed(ratio = 1)
+p
+```
+
+
+- Now, show the data-specific plots
+
+sc-WGS
+```{r}
+
+head(params$g4)
+
+#factor 0:9, then colors
+
+
+g4.1 <- ggplot(filter(params$g4, chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
+                                                        fill=factor(num_chr, levels=sort(unique(num_chr))))) + 
+  geom_tile(color = "white", size = 1) + 
+  scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
+  theme_classic() + theme(axis.ticks = element_blank(),
+                          axis.line = element_blank(),
+                          axis.text.x = element_text(size= 8),
+                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+  #coord_fixed(ratio = 1) + 
+  xlab("Chromosome") + ylab("")+ 
+  theme(legend.position="top", 
+        #plot.margin=grid::unit(c(0,0,0,0), "mm"),
+        aspect.ratio=1)
+
+g4.2 <- ggplot(filter(params$g4, chr == "n"), aes(x=chr, y=category, fill=prop)) +
+  geom_tile(color = "white", size = 1) + 
+  scale_fill_gradient(low = "white", high = "black" ) +
+  theme_classic() + theme(axis.ticks = element_blank(),
+                          axis.line = element_blank(),
+                          axis.text.x = element_text(size= 8),
+                          axis.text.y = element_blank()) + #element_text(vjust=0.3, hjust = 1)) +
+  coord_fixed(ratio = 1) + 
+  xlab("n") + ylab("") + 
+  scale_y_discrete(position = "right") + 
+  theme(legend.position="top")#, 
+        #plot.margin=grid::unit(c(0,0,0,0), "mm"))
+cowplot::plot_grid(g4.1, g4.2, align = "h", rel_heights = c(1, 1), rel_widths = c(3, 1))
+
+#gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1))
+g4.1
+g4.2
+```
+
+
+```{r fig.align="center",  out.width = "100%", fig.asp = 1}
+#
+#fig.width = 8,, out.width = "140%"}
+#out.width = "140%", 
+#fig.width = 7.5, fig.align = "center"}
+
+g4.0 <- params$g4 %>% 
+            mutate(num_chr_filt = ifelse(num_chr > 9, 9, num_chr),
+                      num_chr_filt = factor(num_chr, levels = 0:9),
+                      prop2 = cut(prop, breaks = c(seq(0, 0.2, by = 0.05), 0.3, 0.4, 0.5, 1)),
+                      num_chr_filt2=ifelse(chr == "n", as.character(prop2), as.character(num_chr_filt))) %>%
+            mutate(num_chr_filt3 = factor(num_chr_filt2, levels=c(levels(num_chr_filt), levels(prop2)))) #%>%
+  #mutate(category=factor(category, levels=levels(category)))#, labels = g4 %>% select(category, categ) %>% distinct() %>% pull(categ)))
+  
+labels_g4 <- params$g4 %>% select(category, categ) %>% distinct()
+
+colors <- c(brewer.pal(n = 9, name = "Blues")[c(5,3)], 
+            "white",
+            brewer.pal(n = 9, name = "Reds")[3:9], 
+            brewer.pal(n = 8, name = "Greys"))
+#2018-05-27
+g4.01 <- ggplot(g4.0, aes(x=chr, y=category, fill=num_chr_filt3)) + 
+  geom_tile(color = "white", size = 1) + 
+  
+  scale_fill_manual(values = colors,drop=FALSE,name = "Copy Number") +
+  theme_classic() + theme(axis.ticks = element_blank(),
+                          axis.line = element_blank(),
+                          axis.text.x = element_text(size= 8),
+                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+  #coord_fixed(ratio = 1) + 
+  xlab("Chromosome") + ylab("")+ 
+  #theme(legend.position="top") +
+  scale_y_discrete(breaks=labels_g4$category,
+                   labels=labels_g4$categ, position = "right")
+  theme(legend.position="top")
+        #plot.margin=grid::unit(c(0,0,0,0), "mm"),
+        #aspect.ratio=1)
+  
+  
+  
+g4.01
+```
+
