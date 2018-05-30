@@ -525,6 +525,7 @@ heatMapUI <- function(id) {
   
   tagList(
     p("This heatmap represents the number of distinct chromosomal states per group. Each column represents a chromosome, and each row represents a distinct chromosomal state per group. The proportion of cells within each group that have the given chromosomal state is shown on the rightmost plot (square black boxes). The darker the square, the greater the proportion of cells within that group that are in that state."),
+    p("Resize the width of your browser window to change the size of the plot"),
     plotOutput(ns("chrHeatS2"), height = "800px")
   )
 }
@@ -600,6 +601,25 @@ heatMap <- function(input, output, session, input_df, file_type, orig_input){
 }
 
 
+two_to_four <- function(df){
+    df %>%
+    spread(chr, num_chr) %>%
+    group_by(category)  %>%
+    unite(colPaste, -category, -smpl, -file_type,remove = FALSE) %>% #added -file_type
+    count(colPaste) %>%
+    mutate(prop = n / sum(n)) %>%
+    separate(colPaste, c(1:22, "X", "Y"), sep = "_") %>%
+    ungroup() %>%
+    mutate(category = paste(row_number(), category, sep="___")) %>%
+    gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
+    mutate(chr= factor(chr, levels=c(1:22, "X", "Y","n")))  %>%
+    mutate(num_chr = as.numeric(num_chr)) %>%
+    separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
+    mutate(row_numb=as.numeric(row_numb)) %>%
+    arrange(categ, row_numb) %>%
+    mutate(category = factor(category,levels=unique(category)))
+}
+ 
 
 #runApp(list(
 #  ui = fluidPage(

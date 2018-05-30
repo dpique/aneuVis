@@ -80,7 +80,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv")
                                     ),
                                     actionButton("submit_fish", "Submit and Go to Table Summary"),
-                                    #actionButton('reset_fish', 'Reset Input'),
+                                    actionButton('reset_fish', 'Reset Input'),
                                     #Resetting input: https://gist.github.com/bborgesr/07406b30ade8a011e59971835bf6c6f7
                                     textOutput("fish_summary"),
                                     hr(),
@@ -253,30 +253,11 @@ ui <- tagList(shinyjs::useShinyjs(),
                                              )
                                     ),
                                     uiOutput("gridPlots")),
-                           tabPanel("SC-WGS", 
-                                    p("This heatmap represents the number of distinct chromosomal states per group. 
-                                      Each column represents a chromosome, and each row represents a distinct chromosomal 
-                                      state per group. The proportion of cells within each group that have the given chromosomal 
-                                      state is shown on the rightmost plot (square black boxes). The darker the square, 
-                                      the greater the proportion of cells within that group that are in that state."),
-                                    p("Resize the width of your browser window to have the two plots move closer together"),
-                                    
-                                    plotOutput("chrHeatG2")),
-                           tabPanel("SKY", 
-                                    p("This heatmap represents the number of distinct chromosomal states per group. 
-                                        Each column represents a chromosome, and each row represents a distinct chromosomal 
-                                        state per group. The proportion of cells within each group that have the given 
-                                        chromosomal state is shown on the rightmost plot (square black boxes). The darker 
-                                        the square, the greater the proportion of cells within that group that are in that state."),
-                                    p("Resize the width of your browser window to have the two plots move closer together"),
-                                    plotOutput("chrHeatS2")),
-                           tabPanel("Sky_test_module",
-                                    heatMapUI("sky_test")),
-                           tabPanel("scwgs_test_module",
-                                  heatMapUI("scwgs_test"))
-                           
-                           #2018-05-30
-                                    )),
+                           tabPanel("SC-WGS",
+                                    heatMapUI("scwgs_test")),
+                           tabPanel("SKY",
+                                    heatMapUI("sky_test")) #2018-05-30
+                                    )), 
                 tabPanel("Hypothesis Testing", icon = icon("random"),
                          h3("Are groups statistically significantly different from each other
                             in terms of the degree of numerical aneuploidy?"),
@@ -399,41 +380,55 @@ server <- shinyServer(function(input, output, session) {
   })
   
   
-  values_fish <- reactiveValues(
-    upload_state = NULL
-  )
+  #values_fish <- reactiveValues(
+  #  upload_state = NULL
+  #)
   
-  observeEvent(input$submit_fish, {
-    values_fish$upload_state <- 'uploaded'
+ # observeEvent(input$submit_fish, {
+ #   values_fish$upload_state <- 'uploaded'
+ # })
+  
+  #observeEvent(input$reset_fish, {
+  #  values_fish$upload_state <- 'reset'
+  #})
+  observe({
+    req(input$submit_fish)
+    rv$data <- read.csv(input$inFile$datapath)
+  })
+  
+  observeEvent(input$reset, {
+    rv$data <- NULL
+    reset('inFile')
   })
   
   observeEvent(input$reset_fish, {
-    values_fish$upload_state <- 'reset'
-  })
-  
-  file_input_fish <- reactive({
-    if (is.null(values_fish$upload_state)) {
-      return(NULL)
-    } else if (values_fish$upload_state == 'uploaded') {
-      return(input$submit_fish)
-    } else if (values_fish$upload_state == 'reset') {
-      return(NULL)
-    }
+    #input$submit_fish <- NULL
+    shinyjs::reset('submit_fish')
   })
   
   
-  #ff <- eventReactive({input$fish_files,
+  
+  #file_input_fish <- reactive({
+  #  if (is.null(values_fish$upload_state)) {
+  #    return(NULL)
+  #  } else if (values_fish$upload_state == 'uploaded') {
+  #    return(input$submit_fish)
+  #  } else if (values_fish$upload_state == 'reset') {
+  #    return(NULL)
+  #  }
   #})
+  
+  
                 
-  output$fish_summary <- renderText({
-    if(is.null(values_fish$upload_state)){
-      return("No files uploaded. Submit a set of files.")# or resubmit previously uploaded files with 'Submit and Go to Table Summary'")
-    } else if(!is.null(file_input_fish())){
-      return(paste("Uploaded file(s):", paste0(input$fish_files$name, collapse="; ")))#  map_chr(.x = , .f = paste0, collapse="; ")))
-    } else if(is.null(file_input_fish())){
-      return("Files cleared. Submit a new set of files or resubmit previously uploaded files with 'Submit and Go to Table Summary'")
-    }
-  })
+ # output$fish_summary <- renderText({
+ #   if(is.null(values_fish$upload_state)){
+ #     return("No files uploaded. Submit a set of files.")# or resubmit previously uploaded files with 'Submit and Go to Table Summary'")
+ #   } else if(!is.null(file_input_fish())){
+ #     return(paste("Uploaded file(s):", paste0(input$fish_files$name, collapse="; ")))#  map_chr(.x = , .f = paste0, collapse="; ")))
+ #   } else if(is.null(file_input_fish())){
+ #     return("Files cleared. Submit a new set of files or resubmit previously uploaded files with 'Submit and Go to Table Summary'")
+ #   }
+ # })
     
 
   #
@@ -662,208 +657,25 @@ server <- shinyServer(function(input, output, session) {
   
   ##### 2018-05-06 adding heatmaps
   g4R <- reactive({
-    #validate(
-    #  need(!is.null(input$wgs_file), 'Please upload at least 1 sc-wgs file!')
-    #) 
-    
-    #g2_to_g4 <- tryCatch(if(is.null(g2R())){
-    #  return(NULL)
-    #} else
-    #    )
     if (is.null(input$wgs_file)) {
       return(NULL)
     }
-    
-    
-    g2_to_g4 <- g2R() %>%  #g2
-      spread(chr, num_chr) %>%
-      group_by(category)  %>%
-      unite(colPaste, -category, -smpl, -file_type,remove = FALSE) %>% #added -file_type
-      count(colPaste) %>%
-      mutate(prop = n / sum(n)) %>%
-      separate(colPaste, c(1:22, "X", "Y"), sep = "_") %>%
-      ungroup() %>%
-      mutate(category = paste(row_number(), category, sep="___")) %>%
-      gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
-      mutate(chr= factor(chr, levels=c(1:22, "X", "Y","n")))  %>%
-      mutate(num_chr = as.numeric(num_chr)) %>%
-      separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
-      mutate(row_numb=as.numeric(row_numb)) %>%
-      arrange(categ, row_numb) %>%
-      mutate(category = factor(category,levels=unique(category)))  #2018-05-27
-    return(g2_to_g4)
-  })
-  
-  output$chrHeatG2 <- renderPlot({
-    #replaced g4R with g2_to_g4 2018-05-13
-    #print("g4R():")
-    #print(g4R())
-    #print(g4R()$chr)
-    
-    validate(
-      need(!is.null(g4R()), 'Please upload at least 1 sc-wgs file!')
-    ) 
-    #if(is.null(g4R())
-    g4.0 <- g4R() %>% 
-      mutate(num_chr_filt = ifelse(num_chr > 9, 9, num_chr),
-             num_chr_filt = factor(num_chr, levels = 0:9),
-             prop2 = cut(prop, breaks = c(seq(0, 0.2, by = 0.05), 0.3, 0.4, 0.5, 1)),
-             num_chr_filt2=ifelse(chr == "n", as.character(prop2), as.character(num_chr_filt))) %>%
-      mutate(num_chr_filt3 = factor(num_chr_filt2, levels=c(levels(num_chr_filt), levels(prop2)))) #%>%
-    
-    labels_g4 <- g4R() %>% select(category, categ) %>% distinct()
-    
-    colors <- c(brewer.pal(n = 9, name = "Blues")[c(5,3)], 
-                "white",
-                brewer.pal(n = 9, name = "Reds")[3:9], 
-                brewer.pal(n = 8, name = "Greys"))
-    #2018-05-27
-    g4.01 <- ggplot(g4.0, aes(x=chr, y=category, fill=num_chr_filt3)) + 
-      geom_tile(color = "white", size = 1) + 
-      
-      scale_fill_manual(values = colors,drop=FALSE,name = "Copy Number") +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(size=9),
-                              axis.text.y = element_text(hjust = 1)) + #vjust=0.3, 
-      xlab("Chromosome") + ylab("")+ 
-      scale_y_discrete(breaks=labels_g4$category,
-                       labels=labels_g4$categ, position = "right")
-    return(g4.01)
-    
-    
-    
-    #g4.1 <- ggplot(filter(g4R(), chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
-    #                                                        fill=factor(num_chr, levels=sort(unique(num_chr))))) + 
-    #  geom_tile(color = "white", size = 1) + 
-    #  scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
-    #  theme_classic() + theme(axis.ticks = element_blank(),
-    #                          axis.line = element_blank(),
-    #                          axis.text.x = element_text(size= 8),
-    #                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-    #  #coord_fixed(ratio = 1) + 
-    #  xlab("Chromosome") + ylab("")+ 
-    #  theme(legend.position="left", 
-    #        plot.margin=grid::unit(c(0,0,0,0), "mm"),
-    #        aspect.ratio=1)
-    #
-    #g4.2 <- ggplot(filter(g4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
-    #  geom_tile(color = "white", size = 1) + 
-    #  scale_fill_gradient(low = "white", high = "black" ) +
-    #  theme_classic() + theme(axis.ticks = element_blank(),
-    #                          axis.line = element_blank(),
-    #                          axis.text.x = element_text(size= 8),
-    #                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-    #  coord_fixed(ratio = 1) + 
-    #  xlab("n") + ylab("") + 
-    #  scale_y_discrete(position = "right") + 
-    #  theme(legend.position="right", 
-    #        plot.margin=grid::unit(c(0,0,0,0), "mm"))
-    #return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
+    return(two_to_four(g2R()))
   })
   
   ### do the same for sky plots
   s4R <- reactive({
-    
-   # validate(
-   #   need(!is.null(input$sky_file), 'Please upload at least 1 SKY file!')
-   # ) 
     if (is.null(input$sky_file)) {
       return(NULL)
     }
-    
-    s2_to_s4 <- s2R() %>% 
-      spread(chr, num_chr) %>%
-      group_by(category)  %>%
-      unite(colPaste, -category, -smpl, -file_type,remove = FALSE) %>% #added -file_type
-      count(colPaste) %>%
-      mutate(prop = n / sum(n)) %>%
-      separate(colPaste, c(1:22, "X", "Y"), sep = "_") %>%
-      ungroup() %>%
-      mutate(category = paste(row_number(), category, sep="___")) %>%
-      gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
-      mutate(chr= factor(chr, levels=c(1:22, "X", "Y","n")))  %>%
-      mutate(num_chr = as.numeric(num_chr)) %>%
-      separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
-      mutate(row_numb=as.numeric(row_numb)) %>%
-      arrange(categ, row_numb) %>%
-      mutate(category = factor(category,levels=unique(category))) 
-
-    return(s2_to_s4)
+    return(two_to_four(s2R()))
   })
   
-  output$chrHeatS2 <- renderPlot({
-    
-    validate(
-      need(!is.null(s4R()), 'Please upload at least 1 sky file!')
-    ) 
-    print(head(s4R()))
-    
-    #if(is.null(g4R())
-    s4.0 <- s4R() %>% 
-      mutate(num_chr_filt = ifelse(num_chr > 9, 9, num_chr),
-             num_chr_filt = factor(num_chr, levels = 0:9),
-             prop2 = cut(prop, breaks = c(seq(0, 0.2, by = 0.05), 0.3, 0.4, 0.5, 1)),
-             num_chr_filt2=ifelse(chr == "n", as.character(prop2), as.character(num_chr_filt))) %>%
-      mutate(num_chr_filt3 = factor(num_chr_filt2, levels=c(levels(num_chr_filt), levels(prop2)))) #%>%
-    
-    labels_s4 <- s4R() %>% select(category, categ) %>% distinct()
-    
-    colors <- c(brewer.pal(n = 9, name = "Blues")[c(5,3)], 
-                "white",
-                brewer.pal(n = 9, name = "Reds")[3:9], 
-                brewer.pal(n = 8, name = "Greys"))
-    #2018-05-27
-    s4.01 <- ggplot(s4.0, aes(x=chr, y=category, fill=num_chr_filt3)) + 
-      geom_tile(color = "white", size = 1) + 
-      
-      scale_fill_manual(values = colors,drop=FALSE,name = "Copy Number") +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(size=9),
-                              axis.text.y = element_text(hjust = 1)) + #vjust=0.3, 
-      xlab("Chromosome") + ylab("")+ 
-      scale_y_discrete(breaks=labels_s4$category,
-                       labels=labels_s4$categ, position = "right")
-    return(s4.01)
-    
-    #g4.1 <- ggplot(filter(s4R(), chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
-    #                                                        fill=factor(chr_freq, levels=sort(unique(chr_freq))))) + 
-    #  geom_tile(color = "white", size = 1) + 
-    #  scale_fill_brewer(type = "div",palette = "RdBu", drop=FALSE, direction = -1, name = "Copy Number") +
-    #  theme_classic() + theme(axis.ticks = element_blank(),
-    #                          axis.line = element_blank(),
-    #                          axis.text.x = element_text(size= 8),
-    #                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-    #  #coord_fixed(ratio = 1) + 
-    #  xlab("Chromosome") + ylab("")+ 
-    #  theme(legend.position="left", 
-    #        plot.margin=grid::unit(c(0,0,0,0), "mm"),
-    #        aspect.ratio=1)
-    #
-    #g4.2 <- ggplot(filter(s4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
-    #  geom_tile(color = "white", size = 1) + 
-    #  scale_fill_gradient(low = "white", high = "black" ) +
-    #  theme_classic() + theme(axis.ticks = element_blank(),
-    #                          axis.line = element_blank(),
-    #                          axis.text.x = element_text(size= 8),
-    #                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-    #  coord_fixed(ratio = 1) + 
-    #  xlab("n") + ylab("") + 
-    #  scale_y_discrete(position = "right") + 
-    #  theme(legend.position="right", 
-    #        plot.margin=grid::unit(c(0,0,0,0), "mm"))
-    #return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
-  })
-  
-  #heatMapUI("sky_test"))
   #2018-05-30
   callModule(heatMap, "sky_test", input_df = s2R, file_type = "sky", orig_input = reactive(input$sky_file))
   callModule(heatMap, "scwgs_test", input_df = g2R, file_type = "scwgs", orig_input = reactive(input$wgs_file))
-  #callModule(heatMap, "scwgs_test", input_df = f1R, file_type = "fish", orig_input = reactive(input$fish_files))
-  
-  #heatMap <- function(input, output, session, input_df, file_type){
-    
+
+
   #### adding permutation plot modules - 2018-05-12 
   callModule(permPlotTbl, "fish", file_input = reactive(input$fish_files), 
              input_df = f1R, nPerms = reactive(input$Nperms))
@@ -1011,7 +823,9 @@ server <- shinyServer(function(input, output, session) {
                      numbX = numbX(), numbY = numbY(),
                      stsTbl = stsTbl(),
                      stsTblPerChr=stsTblPerChr(),
-                     g4 = g4R())
+                     g4 = g4R(),
+                     s4 = s4R(),
+                     f1 = f1R())
 
       # Knit the document, passing in the `params` list, and eval it in a
       # child of the global environment (this isolates the code in the document

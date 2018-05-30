@@ -1081,7 +1081,7 @@ server <- shinyServer(function(input, output) {
 
 if(interactive()){
   
-######### 2018-05-09
+######### 2018-05-30
   maxChr = 8
   maxChrPlus1 = maxChr + 1
   
@@ -1090,8 +1090,35 @@ if(interactive()){
   
   tbl_list <- lapply(paste0("~/Downloads/testDat/gra_test/", path_list), read_excel)
   
-  f1 <-  map2(.x = path_list, .y= tbl_list,
-              .f = ~data.frame(category=.x, .y)) %>% 
+  maxChr = 8
+  maxChrPlus1 = maxChr + 1
+  
+  path_list <- as.list(input$fish_files$name)
+  tbl_list <- lapply(input$fish_files$datapath, read_excel)
+  
+  #mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr))))
+  #df
+  #tbl_list[[1]] %>% clean_names %>% rename_at(vars(names(.)), ~ unlist(regmatches(., gregexpr("Y|X|[[:digit:]]+", .))))# %>% 
+  
+  ######### 2018-05-30
+  maxChr = 8
+  maxChrPlus1 = maxChr + 1
+  
+  #2 chromosome
+  path_list <- list.files("~/Downloads/testDat/gra_test/", pattern = ".xlsx")
+  tbl_list <- lapply(paste0("~/Downloads/testDat/gra_test/", path_list), read_excel)
+  
+  #4 chromosome
+  path_list <- list.files(here::here("testDat/"), pattern = "^test_aneupl_4color")
+  #path_list <- list.files(here::here("testDat/"), pattern = "^test_aneupl_file")
+  tbl_list <- lapply(here::here("testDat", path_list), read_xlsx)
+  
+  #path_list <- as.list(input$fish_files$name)
+  #tbl_list <- lapply(input$fish_files$datapath, read_excel)
+
+  f1 <- map2(.x = path_list, .y= tbl_list,
+             .f = ~data.frame(category=.x, .y) %>% clean_names) %>% #) %>%
+    #rename_at(vars(names(.)), ~ unlist(regmatches(., gregexpr("Y|X|[[:digit:]]+", .))))) %>%
     do.call(rbind, .) %>% 
     as_tibble() %>% 
     clean_names() %>%
@@ -1099,10 +1126,25 @@ if(interactive()){
     mutate(category = as.character(category)) %>%
     gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
     mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
-    mutate(chr = factor(chr, levels=c(1:22, "X"))) %>%
+    mutate(chr = factor(chr, levels=c(1:22, "X", "Y"))) %>%
     mutate(file_type = "fish") %>%
-    mutate(category =  tools::file_path_sans_ext(category)) %>%
+    mutate(category = tools::file_path_sans_ext(category)) %>%
     .[ , order(names(.))] 
+
+  f2 <- split(f1, f1$category)
+  all_combos_chr_pairs_and_classes <- reactive({
+    nchrs <- length(unique(f1$chr)) #f1R() %>% ncol(.) - 2
+    chr_pairs <- combn(1:nchrs, 2)
+    classes <- unique(f1$category)
+    expand.grid(1:ncol(chr_pairs),1:length(classes))
+  })
+  f4 <- f1 %>% 
+    select(-file_type) %>% 
+    spread(chr, num_chr) %>% 
+    select(-smpl,smpl)
+  
+  
+ 
   ######### 2018-05-09
   
   maxChr = 8
