@@ -6,6 +6,8 @@ library(janitor)
 library(ggtern)
 #library(shinycustomloader)
 library(RColorBrewer)
+require(openxlsx)
+
 
 #library(DT)
 source("scripts/helper_scripts.R")
@@ -157,7 +159,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                 tabPanel("Table Summary", icon = icon("table"), value = "tableTab",
                          actionButton("returnToDataUpload", "Upload additional datasets"),
                          actionButton("goToVisualization", "Continue to visualization"),
-                         
+                         downloadButton("stats_report", label="Download statistics (.xlsx)"),
                          selectInput("numberOfX", "Number of X Chromosomes Expected", 
                                      choices=c("1" = "1", "2" = "2"), selected = "2"),
                          selectInput("numberOfY", "Number of Y Chromosomes Expected", 
@@ -173,8 +175,6 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     )
                          ), 
                          hr(),
-                         
-                         
                          p("Each row in this table represents
                            a different file that was uploaded. The columns represent the following:"),
                          
@@ -269,8 +269,13 @@ ui <- tagList(shinyjs::useShinyjs(),
                                         chromosomal state is shown on the rightmost plot (square black boxes). The darker 
                                         the square, the greater the proportion of cells within that group that are in that state."),
                                     p("Resize the width of your browser window to have the two plots move closer together"),
-                                    plotOutput("chrHeatS2"))
+                                    plotOutput("chrHeatS2")),
+                           tabPanel("Sky_test_module",
+                                    heatMapUI("sky_test")),
+                           tabPanel("scwgs_test_module",
+                                  heatMapUI("scwgs_test"))
                            
+                           #2018-05-30
                                     )),
                 tabPanel("Hypothesis Testing", icon = icon("random"),
                          h3("Are groups statistically significantly different from each other
@@ -584,6 +589,17 @@ server <- shinyServer(function(input, output, session) {
       DT::formatRound(5:7, 2)
   })
   
+  #2018-05-29
+  output$stats_report <- downloadHandler(
+    filename =  paste0(Sys.Date(), "-aneuvis-stats.xlsx"), 
+    content = function(file) {
+      list_of_datasets <- list("Stats By Group" = stsTbl(), "Stats By Group and Chromosome" = stsTblPerChr())
+      write.xlsx(list_of_datasets, file = file)
+    }
+  )
+  
+  
+  
   #output$sumryStatsTblPerChr = downloadHandler('sumStatsTblPerChr-filt.csv', content = function(file) {
   #  s = input$sumryStatsTblPerChr_rows_all
   #  write.csv(stsTblPerChr()[s, , drop = FALSE], file)
@@ -646,9 +662,18 @@ server <- shinyServer(function(input, output, session) {
   
   ##### 2018-05-06 adding heatmaps
   g4R <- reactive({
-    validate(
-      need(!is.null(input$wgs_file), 'Please upload at least 1 sc-wgs file!')
-    ) 
+    #validate(
+    #  need(!is.null(input$wgs_file), 'Please upload at least 1 sc-wgs file!')
+    #) 
+    
+    #g2_to_g4 <- tryCatch(if(is.null(g2R())){
+    #  return(NULL)
+    #} else
+    #    )
+    if (is.null(input$wgs_file)) {
+      return(NULL)
+    }
+    
     
     g2_to_g4 <- g2R() %>%  #g2
       spread(chr, num_chr) %>%
@@ -671,105 +696,182 @@ server <- shinyServer(function(input, output, session) {
   
   output$chrHeatG2 <- renderPlot({
     #replaced g4R with g2_to_g4 2018-05-13
-    print("g4R():")
-    print(g4R())
-    print(g4R()$chr)
-    g4.1 <- ggplot(filter(g4R(), chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
-                                                            fill=factor(num_chr, levels=sort(unique(num_chr))))) + 
-      geom_tile(color = "white", size = 1) + 
-      scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(size= 8),
-                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      #coord_fixed(ratio = 1) + 
-      xlab("Chromosome") + ylab("")+ 
-      theme(legend.position="left", 
-            plot.margin=grid::unit(c(0,0,0,0), "mm"),
-            aspect.ratio=1)
+    #print("g4R():")
+    #print(g4R())
+    #print(g4R()$chr)
     
-    g4.2 <- ggplot(filter(g4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
+    validate(
+      need(!is.null(g4R()), 'Please upload at least 1 sc-wgs file!')
+    ) 
+    #if(is.null(g4R())
+    g4.0 <- g4R() %>% 
+      mutate(num_chr_filt = ifelse(num_chr > 9, 9, num_chr),
+             num_chr_filt = factor(num_chr, levels = 0:9),
+             prop2 = cut(prop, breaks = c(seq(0, 0.2, by = 0.05), 0.3, 0.4, 0.5, 1)),
+             num_chr_filt2=ifelse(chr == "n", as.character(prop2), as.character(num_chr_filt))) %>%
+      mutate(num_chr_filt3 = factor(num_chr_filt2, levels=c(levels(num_chr_filt), levels(prop2)))) #%>%
+    
+    labels_g4 <- g4R() %>% select(category, categ) %>% distinct()
+    
+    colors <- c(brewer.pal(n = 9, name = "Blues")[c(5,3)], 
+                "white",
+                brewer.pal(n = 9, name = "Reds")[3:9], 
+                brewer.pal(n = 8, name = "Greys"))
+    #2018-05-27
+    g4.01 <- ggplot(g4.0, aes(x=chr, y=category, fill=num_chr_filt3)) + 
       geom_tile(color = "white", size = 1) + 
-      scale_fill_gradient(low = "white", high = "black" ) +
+      
+      scale_fill_manual(values = colors,drop=FALSE,name = "Copy Number") +
       theme_classic() + theme(axis.ticks = element_blank(),
                               axis.line = element_blank(),
-                              axis.text.x = element_text(size= 8),
-                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      coord_fixed(ratio = 1) + 
-      xlab("n") + ylab("") + 
-      scale_y_discrete(position = "right") + 
-      theme(legend.position="right", 
-            plot.margin=grid::unit(c(0,0,0,0), "mm"))
-    return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
+                              axis.text.x = element_text(size=9),
+                              axis.text.y = element_text(hjust = 1)) + #vjust=0.3, 
+      xlab("Chromosome") + ylab("")+ 
+      scale_y_discrete(breaks=labels_g4$category,
+                       labels=labels_g4$categ, position = "right")
+    return(g4.01)
+    
+    
+    
+    #g4.1 <- ggplot(filter(g4R(), chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
+    #                                                        fill=factor(num_chr, levels=sort(unique(num_chr))))) + 
+    #  geom_tile(color = "white", size = 1) + 
+    #  scale_fill_brewer(type = "div",palette = "RdBu",drop=FALSE, direction = -1, name = "Copy Number") +
+    #  theme_classic() + theme(axis.ticks = element_blank(),
+    #                          axis.line = element_blank(),
+    #                          axis.text.x = element_text(size= 8),
+    #                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+    #  #coord_fixed(ratio = 1) + 
+    #  xlab("Chromosome") + ylab("")+ 
+    #  theme(legend.position="left", 
+    #        plot.margin=grid::unit(c(0,0,0,0), "mm"),
+    #        aspect.ratio=1)
+    #
+    #g4.2 <- ggplot(filter(g4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
+    #  geom_tile(color = "white", size = 1) + 
+    #  scale_fill_gradient(low = "white", high = "black" ) +
+    #  theme_classic() + theme(axis.ticks = element_blank(),
+    #                          axis.line = element_blank(),
+    #                          axis.text.x = element_text(size= 8),
+    #                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+    #  coord_fixed(ratio = 1) + 
+    #  xlab("n") + ylab("") + 
+    #  scale_y_discrete(position = "right") + 
+    #  theme(legend.position="right", 
+    #        plot.margin=grid::unit(c(0,0,0,0), "mm"))
+    #return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
   })
   
   ### do the same for sky plots
   s4R <- reactive({
     
-    validate(
-      need(!is.null(input$sky_file), 'Please upload at least 1 SKY file!')
-    ) 
+   # validate(
+   #   need(!is.null(input$sky_file), 'Please upload at least 1 SKY file!')
+   # ) 
+    if (is.null(input$sky_file)) {
+      return(NULL)
+    }
     
     s2_to_s4 <- s2R() %>% 
       spread(chr, num_chr) %>%
       group_by(category)  %>%
-      unite(colPaste, -category, -smpl, -file_type, remove = FALSE) %>%
+      unite(colPaste, -category, -smpl, -file_type,remove = FALSE) %>% #added -file_type
       count(colPaste) %>%
       mutate(prop = n / sum(n)) %>%
       separate(colPaste, c(1:22, "X", "Y"), sep = "_") %>%
       ungroup() %>%
       mutate(category = paste(row_number(), category, sep="___")) %>%
-      gather(key = chr, value=chr_freq, 2:(ncol(.)-1)) %>%
-      mutate(chr= factor(chr, levels=c(1:22, "X", "Y", "n"))) %>%
-      mutate(chr_freq = as.numeric(chr_freq)) %>%
+      gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
+      mutate(chr= factor(chr, levels=c(1:22, "X", "Y","n")))  %>%
+      mutate(num_chr = as.numeric(num_chr)) %>%
       separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
       mutate(row_numb=as.numeric(row_numb)) %>%
       arrange(categ, row_numb) %>%
       mutate(category = factor(category,levels=unique(category))) 
+
     return(s2_to_s4)
   })
   
   output$chrHeatS2 <- renderPlot({
-    g4.1 <- ggplot(filter(s4R(), chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
-                                                            fill=factor(chr_freq, levels=sort(unique(chr_freq))))) + 
-      geom_tile(color = "white", size = 1) + 
-      scale_fill_brewer(type = "div",palette = "RdBu", drop=FALSE, direction = -1, name = "Copy Number") +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(size= 8),
-                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      #coord_fixed(ratio = 1) + 
-      xlab("Chromosome") + ylab("")+ 
-      theme(legend.position="left", 
-            plot.margin=grid::unit(c(0,0,0,0), "mm"),
-            aspect.ratio=1)
     
-    g4.2 <- ggplot(filter(s4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
+    validate(
+      need(!is.null(s4R()), 'Please upload at least 1 sky file!')
+    ) 
+    print(head(s4R()))
+    
+    #if(is.null(g4R())
+    s4.0 <- s4R() %>% 
+      mutate(num_chr_filt = ifelse(num_chr > 9, 9, num_chr),
+             num_chr_filt = factor(num_chr, levels = 0:9),
+             prop2 = cut(prop, breaks = c(seq(0, 0.2, by = 0.05), 0.3, 0.4, 0.5, 1)),
+             num_chr_filt2=ifelse(chr == "n", as.character(prop2), as.character(num_chr_filt))) %>%
+      mutate(num_chr_filt3 = factor(num_chr_filt2, levels=c(levels(num_chr_filt), levels(prop2)))) #%>%
+    
+    labels_s4 <- s4R() %>% select(category, categ) %>% distinct()
+    
+    colors <- c(brewer.pal(n = 9, name = "Blues")[c(5,3)], 
+                "white",
+                brewer.pal(n = 9, name = "Reds")[3:9], 
+                brewer.pal(n = 8, name = "Greys"))
+    #2018-05-27
+    s4.01 <- ggplot(s4.0, aes(x=chr, y=category, fill=num_chr_filt3)) + 
       geom_tile(color = "white", size = 1) + 
-      scale_fill_gradient(low = "white", high = "black" ) +
+      
+      scale_fill_manual(values = colors,drop=FALSE,name = "Copy Number") +
       theme_classic() + theme(axis.ticks = element_blank(),
                               axis.line = element_blank(),
-                              axis.text.x = element_text(size= 8),
-                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      coord_fixed(ratio = 1) + 
-      xlab("n") + ylab("") + 
-      scale_y_discrete(position = "right") + 
-      theme(legend.position="right", 
-            plot.margin=grid::unit(c(0,0,0,0), "mm"))
-    return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
+                              axis.text.x = element_text(size=9),
+                              axis.text.y = element_text(hjust = 1)) + #vjust=0.3, 
+      xlab("Chromosome") + ylab("")+ 
+      scale_y_discrete(breaks=labels_s4$category,
+                       labels=labels_s4$categ, position = "right")
+    return(s4.01)
+    
+    #g4.1 <- ggplot(filter(s4R(), chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
+    #                                                        fill=factor(chr_freq, levels=sort(unique(chr_freq))))) + 
+    #  geom_tile(color = "white", size = 1) + 
+    #  scale_fill_brewer(type = "div",palette = "RdBu", drop=FALSE, direction = -1, name = "Copy Number") +
+    #  theme_classic() + theme(axis.ticks = element_blank(),
+    #                          axis.line = element_blank(),
+    #                          axis.text.x = element_text(size= 8),
+    #                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+    #  #coord_fixed(ratio = 1) + 
+    #  xlab("Chromosome") + ylab("")+ 
+    #  theme(legend.position="left", 
+    #        plot.margin=grid::unit(c(0,0,0,0), "mm"),
+    #        aspect.ratio=1)
+    #
+    #g4.2 <- ggplot(filter(s4R(), chr == "n"), aes(x=chr, y=category, fill=prop)) +
+    #  geom_tile(color = "white", size = 1) + 
+    #  scale_fill_gradient(low = "white", high = "black" ) +
+    #  theme_classic() + theme(axis.ticks = element_blank(),
+    #                          axis.line = element_blank(),
+    #                          axis.text.x = element_text(size= 8),
+    #                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+    #  coord_fixed(ratio = 1) + 
+    #  xlab("n") + ylab("") + 
+    #  scale_y_discrete(position = "right") + 
+    #  theme(legend.position="right", 
+    #        plot.margin=grid::unit(c(0,0,0,0), "mm"))
+    #return(gridExtra::grid.arrange(g4.1, g4.2, ncol=2, widths=c(4,1)))#,layout_matrix=))
   })
   
+  #heatMapUI("sky_test"))
+  #2018-05-30
+  callModule(heatMap, "sky_test", input_df = s2R, file_type = "sky", orig_input = reactive(input$sky_file))
+  callModule(heatMap, "scwgs_test", input_df = g2R, file_type = "scwgs", orig_input = reactive(input$wgs_file))
+  #callModule(heatMap, "scwgs_test", input_df = f1R, file_type = "fish", orig_input = reactive(input$fish_files))
   
+  #heatMap <- function(input, output, session, input_df, file_type){
+    
   #### adding permutation plot modules - 2018-05-12 
-  callModule(permPlotTbl, "fish", file_input = reactive(input$fish_files), #"test", #
-             input_df = f1R, 
-             nPerms = reactive(input$Nperms))
-  #permute_action = reactive(input$permute_action))
-  
-  callModule(permPlotTbl, "sc-wgs", file_input = reactive(input$wgs_file), #"test", #
+  callModule(permPlotTbl, "fish", file_input = reactive(input$fish_files), 
+             input_df = f1R, nPerms = reactive(input$Nperms))
+
+  callModule(permPlotTbl, "sc-wgs", file_input = reactive(input$wgs_file), 
              input_df = g2R, nPerms = reactive(input$Nperms))
   
-  callModule(permPlotTbl, "sky", file_input = reactive(input$sky_file), #"test", #
+  callModule(permPlotTbl, "sky", file_input = reactive(input$sky_file),
              input_df = s2R, nPerms = reactive(input$Nperms))
   
   ###### adding shinyjs buttons - redirection 2018-05-10
@@ -898,8 +1000,8 @@ server <- shinyServer(function(input, output, session) {
       # Copy the report file to a temporary directory before processing it, in
       # case we don't have write permissions to the current working dir (which
       # can happen when deployed).
-      tempReport <- file.path(tempdir(), "report2.Rmd")
-      file.copy("report2.Rmd", tempReport, overwrite = TRUE)
+      tempReport <- file.path(tempdir(), "report3.Rmd")
+      file.copy("report3.Rmd", tempReport, overwrite = TRUE)
       
       # Set up parameters to pass to Rmd document
       params <- list(fish_files = input$fish_files, 

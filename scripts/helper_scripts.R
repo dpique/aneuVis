@@ -409,7 +409,7 @@ retPermPlotDf <- function(input_df, fxn, nPerms){
   #obs_dist_log <- log(obs_dist+1, 2)
   shuf_dists <- lapply(1:nPerms, function(x) shufRetDist(input_df_wide, fxn))
     
-  shuf_dists_aneupl <- shuf_dists %>% # lapply(1:nPerms, function(x) shufRetDist(input_df_wide, fxn)) %>%
+  shuf_dists_aneupl <- shuf_dists %>% 
     lapply(function(x) obs_dist > x) %>%
     reduce(`+`) %>%
     as_tibble()
@@ -443,7 +443,6 @@ retPermPlotDf <- function(input_df, fxn, nPerms){
 
 shufRetDist <- function(matr_wide, fxn, perm = TRUE){
   if(perm == TRUE){
-    #input_df = matr
     matr2 <- matr_wide %>% #matr_wide %>% # matr5 %>% 
       mutate(category = sample(category)) %>%
       gather("chr", "num_chr", 4:ncol(.))
@@ -490,17 +489,6 @@ permPlotTbl <- function(input, output, session, file_input, input_df, nPerms) {
   # Yields the data frame with an additional column "selected_"
   # that indicates whether that observation is brushed
 
-  
-  
-  #perms <- reactive({ 
-  #  validate(
-  #    need(!is.null(file_input()), 'Please upload at least 1 file.')
-  #  ) 
-  #  print("hello")
-  #  perm_df = retPermPlotDf(input_df = input_df(), fxn, nPerms = input$Nperms)
-  #  return(perm_df)
-  #})
-  
   perms <- eventReactive(input$permute_action, {
     perm_df = retPermPlotDf(input_df = input_df(), 
                             fxn = match.fun(input$fxn_to_perm), nPerms = input$Nperms)
@@ -532,4 +520,98 @@ permPlotTbl <- function(input, output, session, file_input, input_df, nPerms) {
 
 
 
+heatMapUI <- function(id) {
+  ns <- NS(id)
+  
+  tagList(
+    p("This heatmap represents the number of distinct chromosomal states per group. Each column represents a chromosome, and each row represents a distinct chromosomal state per group. The proportion of cells within each group that have the given chromosomal state is shown on the rightmost plot (square black boxes). The darker the square, the greater the proportion of cells within that group that are in that state."),
+    plotOutput(ns("chrHeatS2"), height = "800px")
+  )
+}
 
+
+heatMap <- function(input, output, session, input_df, file_type, orig_input){
+  
+  s4R <- reactive({
+    
+     if (is.null(input_df())) {
+      return(NULL)
+    }
+    
+    s2_to_s4 <- input_df() %>% 
+      spread(chr, num_chr) %>%
+      group_by(category)  %>%
+      unite(colPaste, -category, -smpl, -file_type,remove = FALSE) %>% #added -file_type
+      count(colPaste) %>%
+      mutate(prop = n / sum(n)) %>%
+      separate(colPaste, c(1:22, "X", "Y"), sep = "_") %>%
+      ungroup() %>%
+      mutate(category = paste(row_number(), category, sep="___")) %>%
+      gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
+      mutate(chr= factor(chr, levels=c(1:22, "X", "Y","n")))  %>%
+      mutate(num_chr = as.numeric(num_chr)) %>%
+      separate(category,into = c("row_numb", "categ"), sep = "___", remove = FALSE) %>%
+      mutate(row_numb=as.numeric(row_numb)) %>%
+      arrange(categ, row_numb) %>%
+      mutate(category = factor(category,levels=unique(category))) 
+    
+    return(s2_to_s4)
+  })
+  
+  
+  output$chrHeatS2 <- renderPlot({
+    
+    validate(
+      need(!is.null(orig_input()), paste0("Please upload at least 1 ", file_type, " file!"))
+    ) 
+    #print(head(s4R()))
+    
+    #if(is.null(g4R())
+    s4.0 <- s4R() %>% 
+      mutate(num_chr_filt = ifelse(num_chr > 9, 9, num_chr),
+             num_chr_filt = factor(num_chr, levels = 0:9),
+             prop2 = cut(prop, breaks = c(seq(0, 0.2, by = 0.05), 0.3, 0.4, 0.5, 1)),
+             num_chr_filt2=ifelse(chr == "n", as.character(prop2), as.character(num_chr_filt))) %>%
+      mutate(num_chr_filt3 = factor(num_chr_filt2, levels=c(levels(num_chr_filt), levels(prop2)))) #%>%
+    
+    labels_s4 <- s4R() %>% select(category, categ) %>% distinct()
+    
+    colors <- c(brewer.pal(n = 9, name = "Blues")[c(5,3)], 
+                "white",
+                brewer.pal(n = 9, name = "Reds")[3:9], 
+                brewer.pal(n = 8, name = "Greys"))
+    #2018-05-27
+    s4.01 <- ggplot(s4.0, aes(x=chr, y=category, fill=num_chr_filt3)) + 
+      geom_tile(color = "white", size = 1) + 
+      
+      scale_fill_manual(values = colors,drop=FALSE,name = "Copy Number") +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(size=9),
+                              axis.text.y = element_text(hjust = 1)) + #vjust=0.3, 
+      xlab("Chromosome") + ylab("")+ 
+      scale_y_discrete(breaks=labels_s4$category,
+                       labels=labels_s4$categ, position = "right") +
+      coord_fixed(ratio = 1) 
+    return(s4.01)
+  #}, #height = function() {
+    #session$clientData$output_scwgs_test-chrHeatS2_width
+  })
+}
+
+
+
+#runApp(list(
+#  ui = fluidPage(
+#    plotOutput("plot1", height="auto")
+#  ),
+#  server = function(input, output, session) {
+#    output$plot1 <- renderPlot(
+#      {
+#      plot(cars)
+#    }, height = function() {
+#      session$clientData$output_plot1_width
+#    }
+#    )
+#  }
+#))

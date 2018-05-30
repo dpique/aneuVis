@@ -13,6 +13,7 @@ params:
   stsTbl: NA
   stsTblPerChr: NA
   g4: NA
+  s4: NA
 urlcolor: blue
 ---
 

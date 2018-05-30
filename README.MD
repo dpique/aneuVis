@@ -1,6 +1,8 @@
 ## README
 
 
+- can add validate(need) statements to output (not just input, like in the examples!!)
+
 
 # 2018-04-25
 #got the ginkgo interface working, but now having issue with ternary plot for FISH data. - 

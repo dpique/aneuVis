@@ -483,7 +483,8 @@ server <- shinyServer(function(input, output) {
                           num_chr_filt = factor(num_chr, levels = 0:9),
                           prop2 = cut(prop, breaks = c(seq(0, 0.2, by = 0.05), 0.3, 0.4, 0.5, 1)),
                           num_chr_filt2=ifelse(chr == "n", as.character(prop2), as.character(num_chr_filt))) %>%
-                mutate(num_chr_filt3 = factor(num_chr_filt2, levels=c(levels(num_chr_filt), levels(prop2)))) #%>%
+                mutate(num_chr_filt3 = factor(num_chr_filt2, levels=c(levels(num_chr_filt), levels(prop2)))) %>%
+      mutate(num_chr_displ = ifelse(chr != "n", "", ifelse( num_chr == 1, "·", ifelse(num_chr == 2, "··", num_chr))))
       #mutate(category=factor(category, levels=levels(category)))#, labels = g4 %>% select(category, categ) %>% distinct() %>% pull(categ)))
       
     labels_g4 <- g4 %>% select(category, categ) %>% distinct()
@@ -502,13 +503,13 @@ server <- shinyServer(function(input, output) {
                               axis.line = element_blank(),
                               axis.text.x = element_text(size= 8),
                               axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      geom_text(aes(label=num_chr_displ), hjust = 0) + 
       #coord_fixed(ratio = 1) + 
       xlab("Chromosome") + ylab("")+ 
       theme(legend.position="top", 
             plot.margin=grid::unit(c(0,0,0,0), "mm")) + 
       scale_y_discrete(breaks=labels_g4$category, #c("0.5","1","2"),
-                       labels=labels_g4$categ, position = "right") #c("Dose 0.5", "Dose 1", "Dose 2"
-    #aspect.ratio=1)
+                       labels=labels_g4$categ, position = "right") 
     
     
     g4.1 <- ggplot(filter(g4, chr %in% c(1:22,"X", "Y")), aes(x=chr, y=category, 
