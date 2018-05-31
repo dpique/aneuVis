@@ -2,7 +2,13 @@
 title: "Aneuvis Visualizations Report"
 author: "aneuvis 0.6"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-output: pdf_document
+header-includes:
+   - \usepackage[utf8]{inputenc}
+   - \usepackage[T1]{fontenc}
+output: 
+  pdf_document:
+    latex_engine: xelatex
+sansfont: Times
 params:
   fish_files: NA
   numbX: NA
@@ -18,9 +24,7 @@ params:
 urlcolor: blue
 ---
 
-This report was automatically generated from [Aneuvis](https://dpique.shinyapps.io/aneuvis/), a web tool for analyzing chromosomal number variation in single cells. Aneuvis summarizes chromosomal copy number data from 3 potential sources: FISH, SKY, and WGS. Below is a summary of the files and data types used in this analysis:
-
-FISH: Here we analyze file type(s) from have `r length(params$fish_files$name)` files: `r params$fish_files$name`
+This report was automatically generated from [Aneuvis](https://dpique.shinyapps.io/aneuvis/), a web tool for analyzing chromosomal number variation in single cells. Aneuvis summarizes chromosomal copy number data from 3 potential sources: FISH, SKY, and WGS.
 
 
 ```{r, echo=FALSE}
@@ -44,6 +48,9 @@ p <- ggtern() +
   Rlab("Polyploid ") +
   guides(fill=guide_legend(title="Legend")) +
   limit_tern(1.03,1.03,1.03) 
+  #theme_classic() + 
+  #theme(legend.position="top")
+
 print(p)
 ```
 
@@ -60,7 +67,7 @@ p2 <- ggplot(params$stsTbl, aes(x= aneupl_score_bakker, y = heterog_score_bakker
 p2
 ```
 
-## Scores by Group and chromosome
+## Scores by Group and Chromosome
 
 ```{r}
 ## Scores by Group
@@ -147,7 +154,7 @@ s4.01 <- ggplot(s4.0, aes(x=chr, y=category, fill=num_chr_filt3)) +
   theme(legend.position="top")
   
 s4.01
-cat("\n\n\\pagebreak\n")
+#cat("\n\n\\pagebreak\n")
 } else {
   print("no sky data uploaded")
 }
@@ -185,8 +192,6 @@ return_chr_prop_matr2 <- function(chromosomes, ltr, maxPair){
 }
 
 
-
-
 create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
   tot <- sum(matr$n)
   gridSize <- maxChr - minChr + 1
@@ -206,8 +211,8 @@ create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
     coord_fixed() +
     xlab(xlab) + 
     ylab(ylab) + 
-    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
-    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
+    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("<", minChr+1),{minChr+1}:{maxChr-1},paste0(">", maxChr-1)))) + 
+    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("<", minChr+1),{minChr+1}:{maxChr-1},paste0(">", maxChr-1)))) + 
     ggtitle(paste0("% aneuploidy across ", tot, " observations\nfile: ", title))
   #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
   return(x)
@@ -221,7 +226,9 @@ create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
 
 ```{r, results='asis', fig.align="center", out.width = "65%"}
 if(!is.null(params$f1)){
-
+#options(device = function(file, width = 7, height = 7, ...) {
+#  cairo_pdf(tempfile(), width = width, height = height, ...)
+#})
   #print(head(params$f1))
 classes <- unique(params$f1$category)
 #fileinput: 'name', 'size', 'type' and 'datapath'.

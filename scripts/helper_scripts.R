@@ -488,7 +488,9 @@ permPlotTbl <- function(input, output, session, file_input, input_df, nPerms) {
   #add file_type for validate
   # Yields the data frame with an additional column "selected_"
   # that indicates whether that observation is brushed
-
+  #input_df2 <- reactive({
+  #  input_df
+  #})
   perms <- eventReactive(input$permute_action, {
     perm_df = retPermPlotDf(input_df = input_df(), 
                             fxn = match.fun(input$fxn_to_perm), nPerms = input$Nperms)
@@ -535,11 +537,14 @@ heatMap <- function(input, output, session, input_df, file_type, orig_input){
   
   s4R <- reactive({
     
-     if (is.null(input_df())) {
+     #if (is.null(input_df())) { #2018-05-31
+      if (is.null(input_df)) {
+         
       return(NULL)
     }
     
-    s2_to_s4 <- input_df() %>% 
+    #s2_to_s4 <- input_df() %>% 
+    s2_to_s4 <- input_df %>% 
       spread(chr, num_chr) %>%
       group_by(category)  %>%
       unite(colPaste, -category, -smpl, -file_type,remove = FALSE) %>% #added -file_type
@@ -621,17 +626,82 @@ two_to_four <- function(df){
 }
  
 
-#runApp(list(
-#  ui = fluidPage(
-#    plotOutput("plot1", height="auto")
-#  ),
-#  server = function(input, output, session) {
-#    output$plot1 <- renderPlot(
-#      {
-#      plot(cars)
-#    }, height = function() {
-#      session$clientData$output_plot1_width
-#    }
-#    )
-#  }
-#))
+####### new scripts as of 05-31-2018
+
+retFishDf <- function(fish_name, fish_datapath){
+  path_list <- as.list(fish_name)#as.list(input$fish_files$name)
+  tbl_list <- lapply(fish_datapath, read_excel) #lapply(input$fish_files$datapath, read_excel)
+  
+  f1 <- map2(.x = path_list, .y= tbl_list,
+             .f = ~data.frame(category=.x, .y) %>% clean_names) %>% #) %>%
+    #rename_at(vars(names(.)), ~ unlist(regmatches(., gregexpr("Y|X|[[:digit:]]+", .))))) %>%
+    do.call(rbind, .) %>% 
+    as_tibble() %>% 
+    clean_names() %>%
+    mutate(smpl = paste0(1:n(), ";",category)) %>%
+    mutate(category = as.character(category)) %>%
+    gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
+    mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
+    mutate(chr = factor(chr, levels=c(1:22, "X", "Y"))) %>%
+    mutate(file_type = "fish") %>%
+    mutate(category = tools::file_path_sans_ext(category)) %>%
+    .[ , order(names(.))] 
+  return(f1)
+}
+
+retSkyDf <- function(sky_datapath){
+  s1 <- read_excel(sky_datapath) %>% 
+    clean_names() %>%
+    filter(rowSums(is.na(.)) <= .50*ncol(.)) %>% #remove rows where > 50% of values are na
+    filter(.[,1] != "Chr. No.") %>%
+    set_names(nm=.[1,]) %>%
+    .[-1,] %>%
+    clean_names()
+  
+  category_s1 <- s1 %>% filter(.[,1] == "Category") %>% 
+    gather(smpl, category, 2:ncol(.)) %>%
+    select(-cell)
+  
+  s2 <- s1 %>% 
+    filter(.[,1] != "Category") %>%
+    mutate_at(vars(starts_with("x")), 
+              .funs = funs(ifelse(str_detect(., ","), 
+                                  str_split_fixed(., ",", n=2)[1,1], .))) %>%
+    mutate_at(vars(starts_with("x")), .funs = as.numeric) %>%
+    gather(key = smpl, value = num_chr, 2:ncol(.)) %>%
+    rename(chr = "cell") %>%
+    mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
+    left_join(category_s1, by="smpl") %>%
+    mutate(file_type = "sky") %>%
+    mutate(chr = factor(chr, levels=c(1:22, "X", "Y"))) %>%
+    .[ , order(names(.))]
+  return(s2)
+}
+
+retWgsDf <- function(wgs_datapath, wgs_key_datapath){
+  path_list <- as.list(wgs_datapath)
+  #fileinput: 'name', 'size', 'type' and 'datapath'.
+  tbl_list <- lapply(path_list, read_delim, delim="\t")
+  
+  g <- map2(.x = path_list, .y= tbl_list,
+            .f = ~data.frame(category=.x, .y)) %>% 
+    do.call(rbind, .) %>% 
+    as_tibble() %>% 
+    .[,colSums(!is.na(.)) > 0] %>%
+    select(-category)
+  print(g)
+  gK <- read_excel(path = wgs_key_datapath[1], sheet = 1) #%>%
+  
+  g2 <- g %>% 
+    gather(key = smpl, value=cp_nm, 4:ncol(.)) %>% 
+    group_by(CHR, smpl) %>% 
+    mutate(bin_size = END - START) %>%
+    summarise(num_chr = round(weighted.mean(x = cp_nm, w = bin_size))) %>% 
+    separate(CHR, c("chrRm", "chr"), sep=3) %>% 
+    dplyr::select(-chrRm) %>% 
+    mutate(chr = factor(chr, levels=c(1:22, "X", "Y")))%>% 
+    left_join(gK, by=c("smpl" = "smpl_id")) %>%
+    mutate(file_type = "sc-wgs") %>%
+    .[ , order(names(.))] 
+  return(g2)
+}

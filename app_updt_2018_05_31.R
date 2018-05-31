@@ -1,3 +1,9 @@
+#2018-05-31
+#Updating the app to allow for reset buttons
+#will be a major rewrite (including observe, observeEvent, and 
+#eventReactive wrappers around existing objects)
+#will first start with FISH
+
 library(shiny)
 library(readxl)
 library(tidyverse)
@@ -17,7 +23,7 @@ max_plots <- 50 # *maximum* total number of plots
 ui <- tagList(shinyjs::useShinyjs(), 
               withMathJax(), 
               navbarPage(
-                title = "aneuvis 0.6",
+                title = "aneuvis 0.7",
                 
                 theme = shinythemes::shinytheme("spacelab"),
                 id = "inTabset",
@@ -50,7 +56,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                   href = "http://www.einstein.yu.edu/faculty/12990/jessica-mar/", 
                                   "Mar"), "(computational biology) labs at Albert Einstein College of Medicine."),
                          p("All source code is available on", tags$a(target = "_blank", 
-                                                               href = "https://github.com/dpique/aneuVis", "Github")),
+                                                                     href = "https://github.com/dpique/aneuVis", "Github")),
                          p("Aneuvis was created using", tags$a(target = "_blank", 
                                                                href = "http://shiny.rstudio.com/", 
                                                                "Shiny"), "version 1.0.5 (R version 3.4.3) and is available under a GPLv3 license"),
@@ -116,6 +122,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = c(".xlsx", ".xls")#, ".csv", ".txt", ".tsv")
                                     ),
                                     actionButton("submit_wgs", "Submit and Go to Table Summary"),
+                                    actionButton('reset_wgs', 'Reset WGS Input'),
                                     hr(),
                                     h3("Copy number and key file structure guide"),
                                     
@@ -145,6 +152,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = c(".xlsx", ".xls")#c(".csv", ".txt", ".tsv")
                                     ), 
                                     actionButton("submit_sky", "Submit and Go to Table Summary"),
+                                    actionButton('reset_sky', 'Reset Sky Input'),
                                     hr(),
                                     h3("SKY file structure guide"),
                                     img(src="sky_layout.png", width=800),
@@ -212,7 +220,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                          p("A tabular and visual representation of the summary statistics is shown below"),
                          img(src="expl_summary_stat.png", width=900),
                          img(src="expl_summary_stat3.png", width=900)
-
+                         
                          ),
                 tabPanel("Visualization", icon = icon("bar-chart-o"), value = "visTab",  #icon = icon("heatmap"), #
                          downloadButton("report", label="Download visualizations (.pdf)", class = "butt"),
@@ -291,74 +299,54 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     permPlotTblUI("sky", header = "SKY")),
                            tabPanel("Multiplatform summary"),
                            tabPanel("Comparing data types")
-
+                           
                          )
                          )))
 
 
 server <- shinyServer(function(input, output, session) {
   ###########
-  #1. Read in raw ginkgo data
-  gR <- eventReactive(input$submit_wgs, ignoreNULL = FALSE, { #var. named with capital R for Reactive
-    #validate(need(input$wgs_file != "", "..."))
-    if (is.null(input$wgs_file)) {
-      return(NULL)
-    }
-    
-    path_list <- as.list(input$wgs_file$datapath)
-    #fileinput: 'name', 'size', 'type' and 'datapath'.
-    tbl_list <- lapply(path_list, read_delim, delim="\t")
-    
-    g <- map2(.x = path_list, .y= tbl_list,
-              .f = ~data.frame(category=.x, .y)) %>% 
-      do.call(rbind, .) %>% 
-      as_tibble() %>% 
-      .[,colSums(!is.na(.)) > 0] %>%
-      select(-category)
-    
-    return(g)
+  #1. Read in raw data
+  rv <- reactiveValues(f1 = NULL, s1=NULL, w1=NULL)
+  
+  observe({
+    req(input$fish_files)
+    rv$f1 <- retFishDf(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
   })
   
-  #2. read in the ginkgo key 
-  
-  gKR <- reactive({#eventReactive(input$submit, { #g for ginkgo K for Key, R for reactive
-    #validate(need(input$wgs_key != "", "..."))
-    
-    if (is.null(input$wgs_key)) {
-      return(NULL)
-    }
-    gK <- read_excel(path = input$wgs_key$datapath[1], sheet = 1) #%>%
-    #mutate(category = paste0(category, "__sc-wgs"))
-    
-    return(gK)
+  observeEvent(input$reset_fish, {
+    rv$f1 <- NULL
+    shinyjs::reset('fish_files')
   })
   
-  
-  g2R <- reactive({
-    if (is.null(gR())) {
-      return(NULL)
-    }
-    g2 <- gR() %>% 
-      gather(key = smpl, value=cp_nm, 4:ncol(.)) %>% 
-      group_by(CHR, smpl) %>% 
-      mutate(bin_size = END - START) %>%
-      summarise(num_chr = round(weighted.mean(x = cp_nm, w = bin_size))) %>% 
-      separate(CHR, c("chrRm", "chr"), sep=3) %>% 
-      dplyr::select(-chrRm) %>% 
-      #filter(chr != "Y") %>% 
-      mutate(chr = factor(chr, levels=c(1:22, "X", "Y")))%>% 
-      left_join(gKR(), by=c("smpl" = "smpl_id")) %>%
-      mutate(file_type = "sc-wgs") %>%
-      .[ , order(names(.))] 
-    return(g2)
+  observe({
+    req(input$sky_file)
+    rv$s1 <- retSkyDf(sky_datapath = input$sky_file$datapath)
   })
+  
+  observeEvent(input$reset_sky, {
+    rv$s1 <- NULL
+    shinyjs::reset('sky_file')
+  })
+  
+  observeEvent(input$submit_wgs, {
+    req(input$wgs_file, input$wgs_key)
+    rv$w1 <- retWgsDf(wgs_datapath = input$wgs_file$datapath, wgs_key_datapath = input$wgs_key$datapath)
+  })
+  
+  observeEvent(input$reset_wgs, {
+    rv$w1 <- NULL
+    shinyjs::reset('wgs_file')
+    shinyjs::reset('wgs_key')
+  })
+  
   
   g2.1R <- reactive({
-    if (is.null(gR())) {
+    if (is.null(rv$w1)) {
       return(NULL)
     }
-    g2.t <- g2R() %>% #select(-avgRound) %>%
-      spread(key = chr, value = num_chr) #%>%
+    g2.t <- rv$w1 %>% 
+      spread(key = chr, value = num_chr)
     colnames(g2.t)[4:ncol(g2.t)] <- paste0("Chr. ", colnames(g2.t)[4:ncol(g2.t)])
     return(g2.t)
   })
@@ -373,75 +361,10 @@ server <- shinyServer(function(input, output, session) {
   )
   
   output$g2T <- DT::renderDataTable({
-    if (is.null(g2R())) {
+    if (is.null(rv$w1)) {
       return(NULL)
     }
-    DT::datatable(g2R())
-  })
-  
-  rv <- reactiveValues(f1 = NULL)
-  
-  observe({
-    req(input$fish_files)
-    rv$f1 <- retFishDf(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
-  })
-  observeEvent(input$reset_fish, {
-    rv$f1 <- NULL
-    shinyjs::reset('fish_files')
-    f1R <- NULL
-  })
-  
-  #f1R <- reactive(input$reset_fish, {
-  #  return(NULL)
-  #})
-
-  f1R <- eventReactive(input$submit_fish, ignoreNULL=FALSE, {
-    if (is.null(input$fish_files)) {
-      return(NULL)
-    } 
-    return(rv$f1)
-  })
-  
-  
-  s1R <- eventReactive(input$submit_sky, ignoreNULL = FALSE, { #reactive({
-    if (is.null(input$sky_file)) {
-      return(NULL)
-    }
-    
-    s1 <- read_excel(input$sky_file$datapath) %>% 
-      clean_names() %>%
-      filter(rowSums(is.na(.)) <= .50*ncol(.)) %>% #remove rows where > 50% of values are na
-      filter(.[,1] != "Chr. No.") %>%
-      set_names(nm=.[1,]) %>%
-      .[-1,] %>%
-      clean_names()
-
-    return(s1)
-    
-  })
-  
-  s2R <- reactive({
-    if (is.null(s1R())) {
-      return(NULL)
-    }
-    category_s1 <- s1R() %>% filter(.[,1] == "Category") %>% 
-      gather(smpl, category, 2:ncol(.)) %>%
-      select(-cell)
-    
-    s2 <- s1R() %>% 
-      filter(.[,1] != "Category") %>%
-      mutate_at(vars(starts_with("x")), 
-                .funs = funs(ifelse(str_detect(., ","), 
-                                    str_split_fixed(., ",", n=2)[1,1], .))) %>%
-      mutate_at(vars(starts_with("x")), .funs = as.numeric) %>%
-      gather(key = smpl, value = num_chr, 2:ncol(.)) %>%
-      rename(chr = "cell") %>%
-      mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
-      left_join(category_s1, by="smpl") %>%
-      mutate(file_type = "sky") %>%
-      mutate(chr = factor(chr, levels=c(1:22, "X", "Y"))) %>%
-      .[ , order(names(.))]
-    return(s2)
+    DT::datatable(rv$w1)
   })
   
   numbX <- reactive({
@@ -451,22 +374,28 @@ server <- shinyServer(function(input, output, session) {
     input$numberOfY
   })
   
-  stsTbl <- reactive({
-    numX = as.numeric(numbX()) #input$numberOfX)
-    numY = as.numeric(numbY()) #input$numberOfY)
-    list_to_pass <- list(g2R(), s2R(), f1R()) %>% purrr::compact() #2018-05-05 issue here?
-    aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score, numX=numX, numY=numY)
-    
-    print(aneupl_scores)
-    heterog_scores = purrr::map_df(.x = list_to_pass, .f = calc_heterog_score)
-    anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized, numX=numX, numY=numY)
-    anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score, numX=numX, numY=numY)
-    instab_idx = purrr::map_df(.x = list_to_pass, .f = calc_instab_idx)
-    perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy, numX=numX, numY=numY)
-    sumStats <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
-      select(category, file_type, n, everything())
-    return(sumStats)
-  })
+  stsTbl <- eventReactive({input$submit_fish | input$submit_sky | input$reset_sky | input$reset_fish |
+      input$reset_wgs | input$submit_wgs |  as.numeric(input$numberOfX) | as.numeric(input$numberOfY)}, {
+        
+        validate(
+          need(!is.null(rv$w1) | !is.null(rv$f1) | !is.null(rv$s1), "Please upload at least 1 file!")
+        )     
+        
+        numX = as.numeric(numbX())
+        numY = as.numeric(numbY())
+        list_to_pass <- list(rv$s1, rv$f1, rv$w1) %>% purrr::compact() #2018-05-05 issue here?
+        aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score, numX=numX, numY=numY)
+        
+        print(aneupl_scores)
+        heterog_scores = purrr::map_df(.x = list_to_pass, .f = calc_heterog_score)
+        anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized, numX=numX, numY=numY)
+        anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score, numX=numX, numY=numY)
+        instab_idx = purrr::map_df(.x = list_to_pass, .f = calc_instab_idx)
+        perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy, numX=numX, numY=numY)
+        sumStats <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
+          select(category, file_type, n, everything())
+        return(sumStats)
+      })
   
   output$sumryStatsTbl <- DT::renderDataTable({
     
@@ -478,17 +407,21 @@ server <- shinyServer(function(input, output, session) {
                   options = list(
                     search = list(regex = TRUE, caseInsensitive = FALSE))) %>% DT::formatRound(c(4:11), 2)
   })
-  
-  stsTblPerChr <- reactive({
+ 
+  stsTblPerChr <- eventReactive({input$submit_fish | input$submit_sky | input$reset_sky | input$reset_fish |
+      input$reset_wgs | input$submit_wgs |  as.numeric(input$numberOfX) | as.numeric(input$numberOfY)}, {
+        
+    validate(
+      need(!is.null(rv$w1) | !is.null(rv$f1) | !is.null(rv$s1), "Please upload at least 1 file!")
+    )     
+
     numX = as.numeric(numbX())
     numY = as.numeric(numbY()) 
     
-    list_to_pass <- list(g2R(), s2R(), f1R()) %>% compact()
+    list_to_pass <- list(rv$s1, rv$f1, rv$w1) %>% purrr::compact() #2018-05-05 issue here?
     aneupl_scores = purrr:::map_df(.x = list_to_pass, .f = calc_aneupl_score, retChr = TRUE, numX=numX, numY=numY)
     heterog_scores = purrr:::map_df(.x = list_to_pass, .f = calc_heterog_score, retChr = TRUE)
-    #anca_scores = purrr:::map_df(.x = list_to_pass, .f = calc_anca_score, retChr = TRUE)
     anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized, retChr = TRUE, numX=numX, numY=numY)
-    #select(category, file_type, n, everything())
     sumStats <- purrr::reduce(list(aneupl_scores,heterog_scores, anca_scores_normalized), full_join, by=c("category","file_type", "chr")) %>%
       select(category, file_type, n, everything())
     return(sumStats)
@@ -513,16 +446,14 @@ server <- shinyServer(function(input, output, session) {
       write.xlsx(list_of_datasets, file = file)
     }
   )
-  
-  
+
   ### Adding ternary plots
   output$ternPlot <- renderPlot({
     p <- ggtern() + 
       geom_point(data=stsTbl(), 
                  aes(x = aneuploid,y=diploid,z=polyploid,
                      color = category, shape= file_type),
-                 #fill = paste0(file_type, ": ",category)),#, label=file_type), 
-                 size = 3, alpha = 0.8) + #,  color = "black") +  #pch= 21, #, stroke = 1
+                 size = 3, alpha = 0.8) + 
       xlab("") + ylab("") +
       Tlab("Diploid") +
       Llab("Aneuploid") +
@@ -530,23 +461,15 @@ server <- shinyServer(function(input, output, session) {
       guides(fill=guide_legend(title="Legend")) +
       limit_tern(1.03,1.03,1.03) 
     print(p)
-    #return(p)
-    #NULL
   })
-  
-  #difficult to make ternplot per chromosome 
-  
   
   #### 2018-05-06 adding scatterplots for heterogeneity and aneuploidy scores
   output$aneuHeteroSctrPlt <- renderPlot({
-    
     p2 <- ggplot(stsTbl(), aes(x= aneupl_score_bakker, y = heterog_score_bakker, 
                                color = category, shape= file_type)) +  #paste0(file_type, ": ",category))) + #category, shape=file_type)) + 
       geom_point( size=4, alpha=0.8) + theme_classic() +
       coord_fixed(ratio = 1)
-    
     return(p2)
-    #NULL
   })
   
   output$brush_info_aneuHeteroSctrPlt <- renderPrint({
@@ -558,22 +481,21 @@ server <- shinyServer(function(input, output, session) {
                                     color = chr, shape=category)) + 
       geom_point(size=3) + theme_classic() +
       coord_fixed(ratio = 1)
-    #scale_size_manual(values = scale_size_manual())
-    
     return(p)
-    #NULL
   })
   
   output$brush_info_aneuHeteroSctrPltPerChr <- renderPrint({
     brushedPoints(data.frame(stsTblPerChr()), input$brush_aneuHeteroSctrPltPerChr)
   })
   
+#if(FALSE){
+  
   ##### 2018-05-06 adding heatmaps
   g4R <- reactive({
     if (is.null(input$wgs_file)) {
       return(NULL)
     }
-    return(two_to_four(g2R()))
+    return(two_to_four(rv$w1))
   })
   
   ### do the same for sky plots
@@ -581,22 +503,22 @@ server <- shinyServer(function(input, output, session) {
     if (is.null(input$sky_file)) {
       return(NULL)
     }
-    return(two_to_four(s2R()))
+    return(two_to_four(rv$s1))
   })
   
   #2018-05-30
-  callModule(heatMap, "sky_test", input_df = s2R, file_type = "sky", orig_input = reactive(input$sky_file))
-  callModule(heatMap, "scwgs_test", input_df = g2R, file_type = "scwgs", orig_input = reactive(input$wgs_file))
-
+  callModule(heatMap, "sky_test", input_df = rv$s1, file_type = "sky", orig_input = reactive(input$sky_file))
+  callModule(heatMap, "scwgs_test", input_df = rv$w1, file_type = "sc-WGS", orig_input = reactive(input$wgs_file))
+  
   #### adding permutation plot modules - 2018-05-12 
   callModule(permPlotTbl, "fish", file_input = reactive(input$fish_files), 
-             input_df = f1R, nPerms = reactive(input$Nperms))
-
+             input_df = reactive(rv$f1), nPerms = reactive(input$Nperms))
+  
   callModule(permPlotTbl, "sc-wgs", file_input = reactive(input$wgs_file), 
-             input_df = g2R, nPerms = reactive(input$Nperms))
+             input_df = reactive(rv$w1), nPerms = reactive(input$Nperms))
   
   callModule(permPlotTbl, "sky", file_input = reactive(input$sky_file),
-             input_df = s2R, nPerms = reactive(input$Nperms))
+             input_df = rv$s1, nPerms = reactive(input$Nperms))
   
   ###### adding shinyjs buttons - redirection 2018-05-10
   
@@ -641,17 +563,16 @@ server <- shinyServer(function(input, output, session) {
                       selected = "visTab")
   })
   
-  
   #########adding FISH bivariate plots 2018-05-05
-  classes <- reactive({unique(f1R()$category)})
+  classes <- reactive({unique(rv$f1$category)})
   #fileinput: 'name', 'size', 'type' and 'datapath'.
   file_names <- reactive({input$fish_files$name})
   
   output$gridPlots <- renderUI({
-    nchrs <- length(unique(f1R()$chr))#f1R() %>% ncol(.) - 2
+    nchrs <- length(unique(rv$f1$chr))
     chr_pairs <- combn(1:nchrs, 2)
     
-    cl_ln <- length(unique(f1R()$category))
+    cl_ln <- length(unique(rv$f1$category))
     plot_output_list <- lapply(1:(cl_ln*ncol(chr_pairs)), function(i) {
       plotname <- paste("plot", i, sep="")
       plotOutput(plotname, height = 450, width = 450)
@@ -662,9 +583,9 @@ server <- shinyServer(function(input, output, session) {
   
   
   all_combos_chr_pairs_and_classes <- reactive({
-    nchrs <- length(unique(f1R()$chr)) #f1R() %>% ncol(.) - 2
+    nchrs <- length(unique(rv$f1$chr))
     chr_pairs <- combn(1:nchrs, 2)
-    classes <- unique(f1R()$category)
+    classes <- unique(rv$f1$category)
     expand.grid(1:ncol(chr_pairs),1:length(classes))
   })
   
@@ -673,7 +594,7 @@ server <- shinyServer(function(input, output, session) {
       need(!is.null(input$fish_files), 'Please upload at least 1 FISH file!')
     )
     
-    f4 <- f1R() %>% 
+    f4 <- rv$f1 %>% 
       select(-file_type) %>% 
       spread(chr, num_chr) %>% 
       select(-smpl,smpl) #move this column to the end
@@ -689,12 +610,12 @@ server <- shinyServer(function(input, output, session) {
       
       output[[plotname]] <- renderPlot({
         
-        classes <- unique(f1R()$category)
+        classes <- unique(rv$f1$category)
         file_names <- input$fish_files$name
         
         maxChr <- 8
         maxChrPlus1 = maxChr + 1
-        nchrs <-  length(unique(f1R()$chr))
+        nchrs <-  length(unique(rv$f1$chr))
         chr_pairs <- combn(1:nchrs, 2)
         
         f1R.t2 <- f4Plot() %>% select(c(1, chr_pairs[,all_combos_chr_pairs_and_classes()[my_i,1]]+1), ncol(.))
@@ -733,8 +654,8 @@ server <- shinyServer(function(input, output, session) {
                      stsTblPerChr=stsTblPerChr(),
                      g4 = g4R(),
                      s4 = s4R(),
-                     f1 = f1R())
-
+                     f1 = rv$f1)
+      
       # Knit the document, passing in the `params` list, and eval it in a
       # child of the global environment (this isolates the code in the document
       # from the code in this app).
@@ -742,27 +663,9 @@ server <- shinyServer(function(input, output, session) {
                         params = params,
                         envir = new.env(parent = globalenv())
       )
-    }#, input$fish_files$name
+    }
   )
-      
-  
 })
 
 
 shinyApp(ui, server)
-#app <- shinyApp(ui, server)
-#runApp(app, display.mode = "showcase")
-#R -e "shiny::runApp('app.R')"
-
-# file_name / smpl_id - done!
-# add chr name to header - 
-# polyploid, diploid and aneuploid
-# rearrange
-
-# remove negative sign from the p-value
-
-# signficantly similar? no. 
-
-#Elaine's paper
-#why we cant reproduce figure 1?
-#send the new figure
