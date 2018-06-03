@@ -404,6 +404,7 @@ pvalFxn2 <- function(val, nPerm){
 
 retPermPlotDf <- function(input_df, fxn, nPerms){
   #test <- input_df %>% fxn
+  input_df <- input_df %>% arrange(category)
   input_df_wide <- input_df %>% spread(chr, num_chr)
   obs_dist <- shufRetDist(input_df_wide, fxn, perm=FALSE)
   #obs_dist_log <- log(obs_dist+1, 2)
@@ -459,6 +460,8 @@ shufRetDist <- function(matr_wide, fxn, perm = TRUE){
 
 ######## shiny modules 2018-05-12 #####
 
+#permPlotTbl
+
 permPlotTblUI <- function(id, header) {
   ns <- NS(id)
   
@@ -482,9 +485,8 @@ permPlotTblUI <- function(id, header) {
   )
 }
 
-#match.fun("calc_heterog_score")
 
-permPlotTbl <- function(input, output, session, file_input, input_df, nPerms) {
+permPlotTbl <- function(input, output, session, input_df, nPerms) { #removed file_input 2018-06-01
   #add file_type for validate
   # Yields the data frame with an additional column "selected_"
   # that indicates whether that observation is brushed
@@ -521,6 +523,157 @@ permPlotTbl <- function(input, output, session, file_input, input_df, nPerms) {
 }
 
 
+########## 2018-06-01
+retPermPlotDfMulti2 <- function(input_df, fxn, nPerms, chrInCommon = FALSE){
+  #takes in a variable number of data matrices (from diff experimental types)
+  #returns values that compares all pairwise comparisons
+  #note that matrices must have same treatments
+  # weighted by number of cells per group
+  #dfs <- list(...)
+  #df_master <- do.call(what = rbind, dfs)
+  if(chrInCommon){
+    chrInCom <- map(input_df, .f = ~pull(.x, chr) %>% as.character() %>% unique())# %>% unique# select()) intersect()
+    chrInCom2 <- Reduce(intersect, chrInCom)
+    input_df <- map(input_df, .f = ~filter(.x, as.character(chr) %in% chrInCom2)) # %>% 
+    print(input_df)
+  }
+  
+  input_df_wide <- lapply(input_df, FUN = function(x) x %>% spread(chr, num_chr))
+  #input_df_wide
+  print("input_df_wide")
+  print(input_df_wide)
+  print("input_df_wide_tail")
+  print(tail(input_df_wide,50))
+  obs_dist <- map(.x = input_df_wide, .f = ~shufRetDist(matr_wide = .x, fxn, perm=FALSE))
+  #weight each element by the length of each df
+  print("obs_dist") #2018-06-02 - issue here! FISH
+  print(obs_dist)
+  nrow_df <- map(.x = input_df_wide, .f = nrow)
+  print("nrow_df")
+  print(nrow_df)
+  weighted_mean_dist_obs <- Reduce(`+`,Map(`*`, obs_dist, unlist(nrow_df))) / (sum(unlist(nrow_df)))
+  print("weighted_mean_dist_obs")
+  print(weighted_mean_dist_obs)
+  obs_dist2 <- as.vector(weighted_mean_dist_obs) %>% as_tibble() %>% rename(obs_val = value)
+  
+  #now generate permuted distances
+  weighted_mean_dist_perms_all <- lapply(1:nPerms, function(x){
+    perm_dist <- map(.x = input_df_wide, .f = ~shufRetDist(matr_wide = .x, fxn, perm=TRUE))
+    weighted_mean_dist_perm <- Reduce(`+`,Map(`*`, perm_dist, unlist(nrow_df))) / (sum(unlist(nrow_df)))
+    return(weighted_mean_dist_perm)
+  })
+  print("weighted_mean_dist_perms_all")
+  print(weighted_mean_dist_perms_all)
+  shuf_dists_aneupl <- weighted_mean_dist_perms_all %>% 
+    lapply(function(x) weighted_mean_dist_obs > x) %>%
+    reduce(`+`) %>%
+    as_tibble()
+  print("shuf_dists_aneupl")
+  print(shuf_dists_aneupl)
+  shuf_dists_mean <- Reduce("+", weighted_mean_dist_perms_all) / length(weighted_mean_dist_perms_all)
+  shuf_dists_mean2 <- as.vector(shuf_dists_mean) %>% as_tibble() %>% rename(perm_mean = value)
+  print("shuf_dists_mean2")
+  print(shuf_dists_mean2)
+  shuf_dists_vect <- lapply(weighted_mean_dist_perms_all, as.vector) 
+  shuf_dists_ci <- do.call(rbind, shuf_dists_vect) %>% 
+    apply(2, quantile, c(0.025, 0.975)) %>% 
+    t() %>% 
+    as_tibble() %>%
+    rename_all(.funs = ~paste0("perm_dist_", .))
+  
+  brk_lbls <- c("<0.001", "<0.01", "<0.05", ">0.05") 
+  categs <- as_tibble(t(combn(x = unique(input_df[[1]]$category), m = 2))) %>% #always correct order?
+    bind_cols(shuf_dists_aneupl) %>%
+    mutate(pvalue = sapply(value, pvalFxn2, nPerms),
+           pval_cut = cut(pvalue, 
+                          breaks = c(0, 0.001, 0.01, 0.05, 1),
+                          labels = brk_lbls))
+  print("categs:")
+  print(categs)
+  categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
+    mutate(fold_change = obs_val / (perm_mean)) %>%
+    mutate(value = nPerms-value)
+  print("categs2")
+  print(categs2)
+  return(categs2)
+}
+
+
+
+permPlotTblMultiInputUI <- function(id, header) {
+  ns <- NS(id)
+  
+  tagList(
+    hr(),
+    h3(header),
+    
+    sliderInput(ns("Nperms"), "Number of permutations:",
+                min = 0, max = 5000, value = 500, step = 500
+    ),
+    checkboxInput(ns("chrInCommon"), label = "Use Chromosomes in Common", value = FALSE, width = NULL),
+    
+    selectInput(ns("fxn_to_perm"), "Select the score to permute", 
+                choices=c("Aneuploidy Score" = "calc_aneupl_score",
+                          "Heterogeneity Score" = "calc_heterog_score",
+                          "Normalized ANCA Score" = "calc_anca_score_normalized",
+                          "ANCA Score" = "calc_anca_score")),
+    #"Instability index" = "calc_instab_idx")),
+    actionButton(ns("permute_action"), "Permute"),
+    p("Please wait for a few minutes for the permutation..."),
+    tableOutput(ns("permTbl")),
+    plotOutput(ns("permPlot"))
+  )
+}
+
+
+permPlotTblMultiInput <- function(input, output, session, nPerms, sky_df, fish_df, wgs_df, chrInCommon) {
+  #add file_type for validate
+  # Yields the data frame with an additional column "selected_"
+  # that indicates whether that observation is brushed
+
+  input_df <- reactive({
+    s <- sky_df() #%>% arrange(category), NA) ifelse(!is.null(fish_df()), 
+    f <- fish_df() #%>% arrange(category), NA) #fish_df() %>% arrange(category)
+    w <- wgs_df() #ifelse(!is.null(wgs_df()), %>% arrange(category), NA) #wgs_df() %>% arrange(category)
+    sfw_list <- list(f,s,w) %>% purrr::compact() %>% #remove empty elements
+      map(.f = ~arrange(.x, category))
+    return(sfw_list)
+  })
+  
+  perms <- eventReactive(input$permute_action, {
+    print(input$chrInCommon)
+    print(class(input$chrInCommon))
+    perm_df <- retPermPlotDfMulti2(input_df = input_df(), 
+                                   fxn = match.fun(input$fxn_to_perm), 
+                                   nPerms = input$Nperms,
+                                   chrInCommon = input$chrInCommon)
+    return(perm_df)
+  })
+  
+  output$permTbl <- renderTable({
+    perms() %>% #mutate(value = nPerms-value) %>% 
+      rename("Group 1" = V1, "Group 2" = V2, "nperm_gr_thn_obs" = value)
+  })
+  
+  output$permPlot <- renderPlot({
+    colorBlue <- RColorBrewer::brewer.pal(n = 9, name = "Blues")
+    ggplot(perms(), aes(x=V1, y=V2, fill=pval_cut)) + 
+      geom_tile() + 
+      scale_fill_manual(values = rev(colorBlue[c(1,3,5,7)]), drop=FALSE) +
+      geom_tile(color = "white", size = 1) + 
+      geom_text(aes(label=round(pvalue, 3))) +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
+  })
+  
+  return(perms)
+}
+
+
+
 
 heatMapUI <- function(id) {
   ns <- NS(id)
@@ -534,7 +687,6 @@ heatMapUI <- function(id) {
 
 
 heatMap <- function(input, output, session, input_df, file_type, orig_input){
-  
   s4R <- reactive({
     
      #if (is.null(input_df())) { #2018-05-31

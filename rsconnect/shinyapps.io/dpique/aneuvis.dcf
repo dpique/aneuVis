@@ -5,9 +5,9 @@ account: dpique
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 299485
-bundleId: 1385901
+bundleId: 1405329
 url: https://dpique.shinyapps.io/aneuvis/
-when: 1526956156.91781
+when: 1527865050.84128
 asMultiple: FALSE
 asStatic: FALSE
-ignoredFiles: .httr-oauth|app_2.R|app_fish_only.R|app_ginkgo.R|exampl_clear_files.R|exampl_multip_plots.R|fish_test_dat.zip|heterog_score_support.Rmd|README.MD|shiny_resources|switch_tabs_example.R|testDat.rds|testDat.zip|errors/2018-05-errors.pptx|scripts/test_scripts|data|manuscript|testDat
+ignoredFiles: .httr-oauth|app_2.R|app_fish_only.R|app_ginkgo.R|app_updt_2018_05_31.R|app_with_delete_and_upload_button.R|app_with_delete_button.R|exampl_clear_files.R|exampl_multip_plots.R|excel_sheet_download.R|fish_test_dat.zip|heatmap_sc_wgs_2018_05.R|heterog_score_support.Rmd|README.MD|report.Rmd|report2.Rmd|shiny_resources|switch_tabs_example.R|test_knit.pdf|test_knit.R|test_knit.Rmd|testDat.rds|testDat.zip|errors/2018-05-errors.pptx|scripts/test_scripts|data|manuscript|testDat

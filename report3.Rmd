@@ -2,13 +2,9 @@
 title: "Aneuvis Visualizations Report"
 author: "aneuvis 0.6"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
-header-includes:
-   - \usepackage[utf8]{inputenc}
-   - \usepackage[T1]{fontenc}
 output: 
   pdf_document:
     latex_engine: xelatex
-sansfont: Times
 params:
   fish_files: NA
   numbX: NA
@@ -28,8 +24,9 @@ This report was automatically generated from [Aneuvis](https://dpique.shinyapps.
 
 
 ```{r, echo=FALSE}
-knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE)
+knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, dev='CairoPDF')
 
+#library(latex2exp)
 # The `params` object is available in the document.
 ```
 
@@ -44,10 +41,11 @@ p <- ggtern() +
              size = 3, alpha = 0.8) +
   xlab("") + ylab("") +
   Tlab("Diploid") +
-  Llab(" Aneuploid") +
-  Rlab("Polyploid ") +
+  Llab("   Aneuploid") +
+  Rlab("Polyploid   ") +
   guides(fill=guide_legend(title="Legend")) +
-  limit_tern(1.03,1.03,1.03) 
+  limit_tern(1.03,1.03,1.03) + 
+  theme(text=element_text(size=9))
   #theme_classic() + 
   #theme(legend.position="top")
 
@@ -211,8 +209,8 @@ create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
     coord_fixed() +
     xlab(xlab) + 
     ylab(ylab) + 
-    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("<", minChr+1),{minChr+1}:{maxChr-1},paste0(">", maxChr-1)))) + 
-    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("<", minChr+1),{minChr+1}:{maxChr-1},paste0(">", maxChr-1)))) + 
+    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("≤", minChr),{minChr+1}:{maxChr-1},paste0("≥", maxChr)))) + 
+    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("≤", minChr),{minChr+1}:{maxChr-1},paste0("≥", maxChr)))) + 
     ggtitle(paste0("% aneuploidy across ", tot, " observations\nfile: ", title))
   #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
   return(x)

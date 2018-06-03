@@ -86,7 +86,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv")
                                     ),
                                     actionButton("submit_fish", "Submit and Go to Table Summary"),
-                                    actionButton('reset_fish', 'Clear Input'),
+                                    actionButton('reset_fish', 'Reset Input'),
                                     #Resetting input: https://gist.github.com/bborgesr/07406b30ade8a011e59971835bf6c6f7
                                     textOutput("fish_summary"),
                                     hr(),
@@ -122,7 +122,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = c(".xlsx", ".xls")#, ".csv", ".txt", ".tsv")
                                     ),
                                     actionButton("submit_wgs", "Submit and Go to Table Summary"),
-                                    actionButton('reset_wgs', 'Reset WGS Input'),
+                                    actionButton('reset_wgs', 'Reset Input'),
                                     hr(),
                                     h3("Copy number and key file structure guide"),
                                     
@@ -152,7 +152,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = c(".xlsx", ".xls")#c(".csv", ".txt", ".tsv")
                                     ), 
                                     actionButton("submit_sky", "Submit and Go to Table Summary"),
-                                    actionButton('reset_sky', 'Reset Sky Input'),
+                                    actionButton('reset_sky', 'Reset Input'),
                                     hr(),
                                     h3("SKY file structure guide"),
                                     img(src="sky_layout.png", width=800),

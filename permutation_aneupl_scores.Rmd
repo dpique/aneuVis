@@ -1,0 +1,293 @@
+---
+title: "Permutation of Aneuploidy Scores across multiple treatments"
+author: "Daniel Pique"
+date: "June 1, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(shiny)
+library(readxl)
+library(tidyverse)
+library(here)
+library(janitor)
+library(ggtern)
+#library(shinycustomloader)
+library(RColorBrewer)
+```
+
+
+```{r}
+retFishDf <- function(fish_name, fish_datapath){
+  path_list <- as.list(fish_name)#as.list(input$fish_files$name)
+  tbl_list <- lapply(fish_datapath, read_excel) #lapply(input$fish_files$datapath, read_excel)
+  
+  f1 <- map2(.x = path_list, .y= tbl_list,
+             .f = ~data.frame(category=.x, .y) %>% clean_names) %>% #) %>%
+    #rename_at(vars(names(.)), ~ unlist(regmatches(., gregexpr("Y|X|[[:digit:]]+", .))))) %>%
+    do.call(rbind, .) %>% 
+    as_tibble() %>% 
+    clean_names() %>%
+    mutate(smpl = paste0(1:n(), ";",category)) %>%
+    mutate(category = as.character(category)) %>%
+    gather(key = chr, value=num_chr, 2:(ncol(.)-1)) %>%
+    mutate(chr = unlist(regmatches(chr, gregexpr("Y|X|[[:digit:]]+", chr)))) %>%
+    mutate(chr = factor(chr, levels=c(1:22, "X", "Y"))) %>%
+    mutate(file_type = "fish") %>%
+    mutate(category = tools::file_path_sans_ext(category)) %>%
+    .[ , order(names(.))] 
+  return(f1)
+}
+
+
+path_list <- as.list(list.files(here::here("testDat/"), pattern = "^test_aneupl_4color"))#as.list(input$fish_files$name)
+tbl_list <- lapply(here::here("testDat", path_list), read_excel) #lapply(input$fish_files$datapath, read_excel)
+rv <- retFishDf(fish_name = list.files(here::here("testDat/"), pattern = "^test_aneupl_4color"), fish_datapath = here::here("testDat", path_list))
+
+path_list <- as.list(list.files("~/Downloads/aneuvis_testdat_FISH (2)/"))#as.list(input$fish_files$name)
+tbl_list <- lapply(paste0("~/Downloads/aneuvis_testdat_FISH (2)/", path_list), read_excel) #lapply(input$fish_files$datapath, read_excel)
+rv <- retFishDf(fish_name = unlist(path_list), fish_datapath = paste0("~/Downloads/aneuvis_testdat_FISH (2)/", path_list))
+#retWgsDf
+
+```
+
+
+
+```{r}
+fxn <- function(chr_tbl, retChr = FALSE, numX=2, numY=1){
+  if(retChr){
+    aneupl_tbl <- chr_tbl %>%
+      mutate(ideal_nchr = 2) %>%
+      mutate(ideal_nchr = ifelse(chr == "X", numX, ideal_nchr)) %>% #2018-05-14
+      mutate(ideal_nchr = ifelse(chr == "Y", numY, ideal_nchr)) %>% #2018-05-14
+      mutate(ideal_obs_diff = abs(ideal_nchr - num_chr)) %>%
+      group_by(category, chr, file_type) %>% 
+      dplyr::summarize(sum_ideal_obs_diff = sum(ideal_obs_diff), n_bins_times_n_cells_per_group = n()) %>%
+      mutate(aneupl_score_bakker = sum_ideal_obs_diff / n_bins_times_n_cells_per_group) %>%
+      select(category, chr, aneupl_score_bakker, file_type)  #%>%
+      #mutate(categ_file_type = paste0(category, "_",file_type))
+      #mutate(source)
+    return(aneupl_tbl)
+  }
+  chr_tbl %>%
+    mutate(ideal_nchr = 2) %>%
+    mutate(ideal_nchr = ifelse(chr == "X", numX, ideal_nchr)) %>% #2018-05-14
+    mutate(ideal_nchr = ifelse(chr == "Y", numY, ideal_nchr)) %>% #2018-05-14
+    mutate(ideal_obs_diff = abs(ideal_nchr - num_chr)) %>%
+    group_by(category, file_type) %>% 
+    summarize(sum_ideal_obs_diff = sum(ideal_obs_diff), n_bins_times_n_cells_per_group = n()) %>%
+    mutate(aneupl_score_bakker = sum_ideal_obs_diff / n_bins_times_n_cells_per_group) %>%
+    select(category, aneupl_score_bakker, file_type)  #%>%
+   # mutate(categ_file_type = paste0(category, "_",file_type))
+}
+
+chr_tbl <-  matr_wide %>%
+      gather("chr", "num_chr", 4:ncol(.))
+
+shufRetDist <- function(matr_wide, fxn, perm = TRUE){
+  if(perm == TRUE){
+    matr2 <- matr_wide %>% #matr_wide %>% # matr5 %>% 
+      mutate(category = sample(category)) %>%
+      gather("chr", "num_chr", 4:ncol(.))
+    matr3 <- matr2 %>% fxn
+  } else {
+    matr3 <- matr_wide %>%
+      gather("chr", "num_chr", 4:ncol(.)) %>% 
+      fxn
+  }
+  matr3 %>% ungroup() %>% select(contains("score")) %>% dist()
+}
+
+
+
+retPermPlotDf <- function(input_df, fxn, nPerms){
+  input_df_wide <- input_df %>% spread(chr, num_chr)
+  obs_dist <- shufRetDist(matr_wide = input_df_wide, fxn, perm=FALSE)
+  #obs_dist_log <- log(obs_dist+1, 2)
+  shuf_dists <- lapply(1:nPerms, function(x) shufRetDist(input_df_wide, fxn))
+    
+  shuf_dists_aneupl <- shuf_dists %>% 
+    lapply(function(x) obs_dist > x) %>%
+    reduce(`+`) %>%
+    as_tibble()
+  shuf_dists_mean <- Reduce("+", shuf_dists) / length(shuf_dists)
+  shuf_dists_mean2 <- as.vector(shuf_dists_mean) %>% as_tibble() %>% rename(perm_mean = value)
+  obs_dist2 <- as.vector(obs_dist) %>% as_tibble() %>% rename(obs_val = value)
+  
+  shuf_dists_sd <- lapply(shuf_dists, as.vector) 
+  shuf_dists_ci <- do.call(rbind, shuf_dists_sd) %>% 
+    apply(2, quantile, c(0.025, 0.975)) %>% 
+    t() %>% 
+    as_tibble() %>%
+    rename_all(.funs = ~paste0("perm_dist_", .))
+  
+  brk_lbls <- c("<0.001", "<0.01", "<0.05", ">0.05") 
+  categs <- as_tibble(t(combn(x = unique(input_df$category), m = 2))) %>% 
+    bind_cols(shuf_dists_aneupl) %>%
+    mutate(pvalue = sapply(value, pvalFxn2, nPerms),
+           pval_cut = cut(pvalue, 
+                          breaks = c(0, 0.001, 0.01, 0.05, 1),
+                          labels = brk_lbls))
+  categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
+    mutate(fold_change = obs_val / (perm_mean)) %>%
+    mutate(value = nPerms-value)
+   return(categs2)
+}
+
+perms_test <- retPermPlotDfMulti(fxn = fxn, nPerms=50, rv, rv[seq(1,to = nrow(rv), by = 2),])
+perms_test <- retPermPlotDfMulti(input_df, fxn = fxn, nPerms=50, rv, rv)
+dfs <- list(rv,rv)
+
+sfw_list <- dfs %>% purrr::compact() %>% #remove empty elements
+  map(.f = ~arrange(.x, category))
+
+
+input_df_wide2 <- list(input_df_wide)
+retPermPlotDfMulti <- function(fxn, nPerms, ...){
+  #takes in a variable number of data matrices (from diff experimental types)
+  #returns values that compares all pairwise comparisons
+  #note that matrices must have same treatments
+  # weighted by number of cells per group
+  dfs <- list(...)
+  #df_master <- do.call(what = rbind, dfs)
+  input_df_wide <- lapply(dfs, FUN = function(x) x %>% spread(chr, num_chr))
+  #input_df_wide
+  obs_dist <- map(.x = input_df_wide, .f = ~shufRetDist(matr_wide = .x, fxn, perm=FALSE))
+  #weight each element by the length of each df
+  nrow_df <- map(.x = input_df_wide, .f = nrow)
+  weighted_mean_dist <- Reduce(`+`,Map(`*`, obs_dist, unlist(nrow_df))) / (sum(unlist(nrow_df)))
+  return(weighted_mean_dist)
+}
+
+
+retPermPlotDfMulti2 <- function(fxn, nPerms, ...){
+  #takes in a variable number of data matrices (from diff experimental types)
+  #returns values that compares all pairwise comparisons
+  #note that matrices must have same treatments
+  # weighted by number of cells per group
+  dfs <- list(...)
+  #df_master <- do.call(what = rbind, dfs)
+  input_df_wide <- lapply(dfs, FUN = function(x) x %>% spread(chr, num_chr))
+  #input_df_wide
+  obs_dist <- map(.x = input_df_wide, .f = ~shufRetDist(matr_wide = .x, fxn, perm=FALSE))
+  #weight each element by the length of each df
+  nrow_df <- map(.x = input_df_wide, .f = nrow)
+  weighted_mean_dist_obs <- Reduce(`+`,Map(`*`, obs_dist, unlist(nrow_df))) / (sum(unlist(nrow_df)))
+  obs_dist2 <- as.vector(weighted_mean_dist_obs) %>% as_tibble() %>% rename(obs_val = value)
+
+  #now generate permuted distances
+  weighted_mean_dist_perms_all <- lapply(1:nPerms, function(x){
+    perm_dist <- map(.x = input_df_wide, .f = ~shufRetDist(matr_wide = .x, fxn, perm=TRUE))
+    weighted_mean_dist_perm <- Reduce(`+`,Map(`*`, perm_dist, unlist(nrow_df))) / (sum(unlist(nrow_df)))
+    return(weighted_mean_dist_perm)
+  })
+  
+  shuf_dists_aneupl <- weighted_mean_dist_perms_all %>% 
+    lapply(function(x) weighted_mean_dist_obs > x) %>%
+    reduce(`+`) %>%
+    as_tibble()
+  shuf_dists_mean <- Reduce("+", weighted_mean_dist_perms_all) / length(weighted_mean_dist_perms_all)
+  shuf_dists_mean2 <- as.vector(shuf_dists_mean) %>% as_tibble() %>% rename(perm_mean = value)
+  
+  shuf_dists_vect <- lapply(weighted_mean_dist_perms_all, as.vector) 
+  shuf_dists_ci <- do.call(rbind, shuf_dists_vect) %>% 
+    apply(2, quantile, c(0.025, 0.975)) %>% 
+    t() %>% 
+    as_tibble() %>%
+    rename_all(.funs = ~paste0("perm_dist_", .))
+
+  brk_lbls <- c("<0.001", "<0.01", "<0.05", ">0.05") 
+  categs <- as_tibble(t(combn(x = unique(dfs[[1]]$category), m = 2))) %>% 
+    bind_cols(shuf_dists_aneupl) %>%
+    mutate(pvalue = sapply(value, pvalFxn2, nPerms),
+           pval_cut = cut(pvalue, 
+                          breaks = c(0, 0.001, 0.01, 0.05, 1),
+                          labels = brk_lbls))
+  categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
+    mutate(fold_change = obs_val / (perm_mean)) %>%
+    mutate(value = nPerms-value)
+  return(categs2)
+  
+  #return(weighted_mean_dist)
+}
+
+
+
+retPermPlotDfMulti
+
+#do the distance between two centroids equal the average of all distances between pairs of points?
+testDat <- tibble(treat=c(rep("treat1", 2), rep("treat2", 2)), data_type = c(rep(c("sky", "fish"), 2)), val1 = c(1,7,19,87))
+
+dist_btw_centroids <- testDat %>% group_by(treat) %>% summarize(mn = mean(val1)) %>% pull(mn) %>% matrix() %>% dist()
+#testDat %>% spread(key = data_type, value = val1) %>% mutate(diff_col = abs(fish-sky)) # group_by(treat)
+avg_of_dists <- testDat %>% spread(key = data_type, value = val1) %>% mutate(diff_col = abs(fish - sky)) %>% pull(diff_col) %>% mean() # group_by(treat)
+
+
+#dist()#dist(pull(.$mn))
+#testDat %>% group_by(data_type) %>% summarize(mn = mean(val1))
+
+plot(testDat)
+
+  obs_dist <- shufRetDist(matr_wide = input_df_wide, fxn, perm=FALSE)
+  #obs_dist_log <- log(obs_dist+1, 2)
+  shuf_dists <- lapply(1:nPerms, function(x) shufRetDist(input_df_wide, fxn))
+    
+  shuf_dists_aneupl <- shuf_dists %>% 
+    lapply(function(x) obs_dist > x) %>%
+    reduce(`+`) %>%
+    as_tibble()
+  shuf_dists_mean <- Reduce("+", shuf_dists) / length(shuf_dists)
+  shuf_dists_mean2 <- as.vector(shuf_dists_mean) %>% as_tibble() %>% rename(perm_mean = value)
+  obs_dist2 <- as.vector(obs_dist) %>% as_tibble() %>% rename(obs_val = value)
+  
+  shuf_dists_sd <- lapply(shuf_dists, as.vector) 
+  shuf_dists_ci <- do.call(rbind, shuf_dists_sd) %>% 
+    apply(2, quantile, c(0.025, 0.975)) %>% 
+    t() %>% 
+    as_tibble() %>%
+    rename_all(.funs = ~paste0("perm_dist_", .))
+  
+  brk_lbls <- c("<0.001", "<0.01", "<0.05", ">0.05") 
+  categs <- as_tibble(t(combn(x = unique(input_df$category), m = 2))) %>% 
+    bind_cols(shuf_dists_aneupl) %>%
+    mutate(pvalue = sapply(value, pvalFxn2, nPerms),
+           pval_cut = cut(pvalue, 
+                          breaks = c(0, 0.001, 0.01, 0.05, 1),
+                          labels = brk_lbls))
+  categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
+    mutate(fold_change = obs_val / (perm_mean)) %>%
+    mutate(value = nPerms-value)
+   return(categs2)
+}
+
+
+
+
+
+pvalFxn2 <- function(val, nPerm){
+  pval <- (nPerm-val +1)/nPerm
+  if(pval > 1){
+    return(1)
+  } else {
+    return(pval)
+  }
+}
+
+perms <- retPermPlotDf(input_df = rv, fxn, nPerms=50)
+perms2 <- perms %>% 
+  rename("Group 1" = V1, "Group 2" = V2, "nperm_gr_thn_obs" = value)
+
+colorBlue <- RColorBrewer::brewer.pal(n = 9, name = "Blues")
+ggplot(perms2, aes(x="Group 1", y="Group 2", fill=pval_cut)) + 
+  geom_tile() + 
+  scale_fill_manual(values = rev(colorBlue[c(1,3,5,7)]), drop=FALSE) +
+  geom_tile(color = "white", size = 1) + 
+  geom_text(aes(label=round(pvalue, 3))) +
+  theme_classic() + theme(axis.ticks = element_blank(),
+                          axis.line = element_blank(),
+                          axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+                          axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+  coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
+```
+
