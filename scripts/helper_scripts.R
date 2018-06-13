@@ -468,7 +468,8 @@ permPlotTblUI <- function(id, header) {
   tagList(
     hr(),
     h3(header),
-    
+    h3("Are groups statistically significantly different from each other
+                            in terms of the degree of numerical aneuploidy?"),
     sliderInput(ns("Nperms"), "Number of permutations:",
                 min = 0, max = 5000, value = 500, step = 500
     ),
@@ -477,11 +478,34 @@ permPlotTblUI <- function(id, header) {
                           "Heterogeneity Score" = "calc_heterog_score",
                           "Normalized ANCA Score" = "calc_anca_score_normalized",
                           "ANCA Score" = "calc_anca_score")),
-                          #"Instability index" = "calc_instab_idx")),
+    #"Instability index" = "calc_instab_idx")),
     actionButton(ns("permute_action"), "Permute"),
     p("Please wait for a few minutes for the permutation..."),
-      tableOutput(ns("permTbl")),
-     plotOutput(ns("permPlot"))
+    tableOutput(ns("permTbl")),
+    plotOutput(ns("permPlot")),
+    
+    p("How to use this page:"),
+    p("Three steps: 1. Select the tab of the data type you would like to permute"),
+    p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
+    p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
+      the number of permutations."),
+    p("Methods: Generate random permutations of the category associated with each observed cell. 
+      The difference in scores between all possible pairs of categories is calculated after each permutation. 
+      A p-value is calculated by counting how many permuted ANCA scores are more extreme than
+      the observed ANCA score."),
+    p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
+      between a given pair of groups. there two possible interpretations of the resulting p-value:
+      not significantly different (p > 0.05, grey color) or significantly different (blue color)."),
+    h4("Key for the table columns"),
+    p("- Group 1 and Group 2 are the groups that are being compared"),
+    p("- nperm_gr_thn_obs is the number of permutations greater than the observed normalized ANCA score"),
+    p("- pvalue is the pvalue rounded to 2 decimal places,	pval_cut is the categorization of the pvalue into bins (for heatmap purposes)"),
+    p("- perm_mean is the mean of the anca scores across all permuted samples"),	
+    p("- perm_dist_2.5% and perm_dist_97.5% are the lower and upper 95% CI for the permuted ANCA scores"),
+    p("- obs_val is the observed difference in ANCA score between the 2 groups"),
+    p("- fold_change is the observed difference in ANCA scores divided by the mean permuted difference in ANCA scores. Analogous to fold enrichment above baseline noise.")
+    
+    
   )
 }
 
@@ -588,13 +612,13 @@ retPermPlotDfMulti2 <- function(input_df, fxn, nPerms, chrInCommon = FALSE){
            pval_cut = cut(pvalue, 
                           breaks = c(0, 0.001, 0.01, 0.05, 1),
                           labels = brk_lbls))
-  print("categs:")
-  print(categs)
+  #print("categs:")
+  #print(categs)
   categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
     mutate(fold_change = obs_val / (perm_mean)) %>%
     mutate(value = nPerms-value)
-  print("categs2")
-  print(categs2)
+ # print("categs2")
+ # print(categs2)
   return(categs2)
 }
 
@@ -610,7 +634,7 @@ permPlotTblMultiInputUI <- function(id, header) {
     sliderInput(ns("Nperms"), "Number of permutations:",
                 min = 0, max = 5000, value = 500, step = 500
     ),
-    checkboxInput(ns("chrInCommon"), label = "Use Chromosomes in Common", value = FALSE, width = NULL),
+    checkboxInput(ns("chrInCommon"), label = "Use Chromosomes in Common", value = TRUE, width = NULL),
     
     selectInput(ns("fxn_to_perm"), "Select the score to permute", 
                 choices=c("Aneuploidy Score" = "calc_aneupl_score",
@@ -626,7 +650,7 @@ permPlotTblMultiInputUI <- function(id, header) {
 }
 
 
-permPlotTblMultiInput <- function(input, output, session, nPerms, sky_df, fish_df, wgs_df, chrInCommon) {
+permPlotTblMultiInput <- function(input, output, session, nPerms, sky_df, fish_df, wgs_df) {
   #add file_type for validate
   # Yields the data frame with an additional column "selected_"
   # that indicates whether that observation is brushed
@@ -669,9 +693,242 @@ permPlotTblMultiInput <- function(input, output, session, nPerms, sky_df, fish_d
       coord_fixed(ratio = 1) + xlab("") + ylab("") + scale_x_discrete(position = "top") 
   })
   
-  return(perms)
+  #return(perms)
 }
 
+
+platformConcordanceUI <- function(id) {
+  ns <- NS(id)
+  
+  tagList(
+    hr(),
+    checkboxInput(ns("chrInCommonPC"), label = "Use Chromosomes in Common", value = TRUE, width = NULL),
+    #p("Concordance between FISH and sc-WGS"),
+    p("The concordance between different experimental types is listed below. A minimum of 2 or more experimental platforms, 
+      each with 2 or more treatments, are required to calculate the concordance statistic. 
+      The support of the concordance statistic is [0-1], where 1 indicates maximal concordance."),
+    p("The concordance statistic (CS) is calculated between two experimental platforms. It can be described as the proportion of times that a given statistic 
+      changes in the same direction between all possible pairwise combinations of treatments between two different experimental platforms. 
+      All statistics listed as columns in the heatmap below are included in the calculation of the CS."),
+    textOutput(ns("concStatSummaryFishScwgs")),
+    textOutput(ns("concStatSummaryFishSky")),
+    textOutput(ns("concStatSummaryScwgsSky")),
+    plotOutput(ns("concPlot")),
+    p("The heatmap above displays the absolute pairwise difference in the statistic (columns) between two treatments (rows) for a particular experimental platform (listed in parentheses)")
+  )
+}
+
+platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df, numbX, numbY) {
+  
+  stsTbl2 <- reactive({ #eventReactive({input$submit_fish | input$submit_sky | input$reset_sky | input$reset_fish |
+      #input$reset_wgs | input$submit_wgs |  as.numeric(input$numberOfX) | as.numeric(input$numberOfY) | 
+      #input$chrInCommonPC}, {
+        
+        s <- sky_df() #%>% arrange(category), NA) ifelse(!is.null(fish_df()), 
+        f <- fish_df() #%>% arrange(category), NA) #fish_df() %>% arrange(category)
+        w <- wgs_df() #ifelse(!is.null(wgs_df()), %>% arrange(category), NA) #wgs_df() %>% arrange(category)
+        
+        validate(
+          need(!is.null(s) | !is.null(f) | !is.null(w), "Please upload at least 1 file!")
+        )     
+        
+        numX = as.numeric(numbX())
+        numY = as.numeric(numbY())
+        list_to_pass <- list(s, f, w) %>% purrr::compact() #2018-05-05 issue here?
+        
+        if(input$chrInCommonPC){
+          chrInCom <- map(list_to_pass, .f = ~pull(.x, chr) %>% as.character() %>% unique())# %>% unique# select()) intersect()
+          chrInCom2 <- Reduce(intersect, chrInCom)
+          list_to_pass <- map(list_to_pass, .f = ~filter(.x, as.character(chr) %in% chrInCom2)) # %>% 
+          print(list_to_pass)
+        }
+        
+        aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score, numX=numX, numY=numY)
+        
+        heterog_scores = purrr::map_df(.x = list_to_pass, .f = calc_heterog_score)
+        anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized, numX=numX, numY=numY)
+        anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score, numX=numX, numY=numY)
+        instab_idx = purrr::map_df(.x = list_to_pass, .f = calc_instab_idx)
+        perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy, numX=numX, numY=numY)
+        sumStats <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
+          select(category, file_type, n, everything())
+        return(sumStats)
+        print(sumStats)
+      })
+  
+  
+  
+  
+  
+  concDf <- reactive({
+    #stsTbl <- read_csv("~/Downloads/2018-06-12-aneuvis-stats-by-group.csv")
+    pairwise_combo_cats <- combn(unique(stsTbl2()$category), 2)
+    sumry_tbl_compare_list <- list() #@sumry_tbl_compare
+    #fish vs single cell wgs
+    for(i in 1:ncol(pairwise_combo_cats)){
+      #i=3
+      stsTbl_split <- stsTbl2() %>% 
+        filter(category %in% pairwise_combo_cats[,i]) %>% 
+        split(f = .$file_type)
+      stsTbl_split_diff <- stsTbl_split %>%
+        map(.f = ~.[1,4:ncol(.)] - .[2,4:ncol(.)]) %>%
+        plyr::ldply() %>%
+        mutate(category = paste0(pairwise_combo_cats[,i], collapse = " - ")) #replace 1 with i
+      sumry_tbl_compare_list[[i]] <- stsTbl_split_diff
+    }
+    sumry_tbl_compare_list.df <- sumry_tbl_compare_list  %>% plyr::ldply()
+    sumry_tbl_compare_list.df.g <- sumry_tbl_compare_list.df %>% 
+      gather(key = score_name, value = score, 2:(ncol(.)-1)) %>%
+      arrange(category, .id, score_name) %>%
+      mutate(.id2 = paste0("(", .id, ")")) %>%
+      unite(col = category_new, category, .id2, sep = " ", remove = FALSE) %>%
+      mutate(score_binary = ifelse(score > 0, 1, ifelse(score < 0 , -1, 0))) #%>%
+    #print(sumry_tbl_compare_list.df.g)
+    return(sumry_tbl_compare_list.df.g)
+  })
+  
+  output$concStatSummaryFishScwgs <- renderText({
+    if(!all(c("fish", "sc-wgs") %in% unique(concDf()$.id))){
+      return(NULL)#"Please upload both FISH and SC-WGS data")
+    }
+    
+    sumry_tbl_compare_list.df.g2 <- concDf() %>%
+      select(-category_new, -.id2, -score) %>%
+      spread(key=.id, value = score_binary) %>%
+      mutate(concordance = as.numeric({fish == `sc-wgs`}))
+    tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
+    return(paste0("Concordance between FISH and sc-WGS: ", round(tot_concord,3)))
+  })
+  
+  output$concStatSummaryFishSky <- renderText({
+    if(!all(c("fish", "sky") %in% unique(concDf()$.id))){
+      return(NULL)#"Please upload both FISH and SKY data")
+    }
+    sumry_tbl_compare_list.df.g2 <- concDf() %>%
+      select(-category_new, -.id2, -score) %>%
+      spread(key=.id, value = score_binary) %>%
+      mutate(concordance = as.numeric({fish == sky}))# collapse = ": "))##, .id=.id) #%>%
+    tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
+    return(paste0("Concordance between FISH and SKY: ", round(tot_concord,3)))
+    
+    #return(tot_concord)
+  })
+  #
+  output$concStatSummaryScwgsSky <- renderText({
+    if(!all(c("sc-wgs", "sky") %in% unique(concDf()$.id))){
+      return(NULL)#"Please upload both FISH and SKY data")
+    }
+    sumry_tbl_compare_list.df.g2 <- concDf() %>%
+      select(-category_new, -.id2, -score) %>%
+      spread(key=.id, value = score_binary) %>%
+      mutate(concordance = as.numeric({sky == `sc-wgs`}))# collapse = ": "))##, .id=.id) #%>%
+    tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
+    return(paste0("Concordance between sc-WGS and SKY: ", round(tot_concord,3)))
+    
+    #return(tot_concord)
+  })
+  #sum(sumry_tbl_compare_list.df.g2$concordance)/nrow(sumry_tbl_compare_list.df.g2)
+  
+  output$concPlot <- renderPlot({
+    
+    ggplot(concDf(), aes(x=score_name, y= category_new, fill=score)) + 
+      geom_tile() + 
+      scale_fill_gradient2() +
+      geom_text(aes(label=round(score, 2))) +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      coord_fixed(ratio = 1) + xlab("") + ylab("") #+ scale_x_discrete(position = "top") 
+  })
+}
+
+
+
+platformConcordance <- function(input, output, session, stsTbl) {
+
+  concDf <- reactive({
+    #stsTbl <- read_csv("~/Downloads/2018-06-12-aneuvis-stats-by-group.csv")
+    pairwise_combo_cats <- combn(unique(stsTbl()$category), 2)
+    sumry_tbl_compare_list <- list() #@sumry_tbl_compare
+    #fish vs single cell wgs
+    for(i in 1:ncol(pairwise_combo_cats)){
+      #i=3
+      stsTbl_split <- stsTbl() %>% 
+        filter(category %in% pairwise_combo_cats[,i]) %>% 
+        split(f = .$file_type)
+      stsTbl_split_diff <- stsTbl_split %>%
+        map(.f = ~.[1,4:ncol(.)] - .[2,4:ncol(.)]) %>%
+        plyr::ldply() %>%
+        mutate(category = paste0(pairwise_combo_cats[,i], collapse = " - ")) #replace 1 with i
+      sumry_tbl_compare_list[[i]] <- stsTbl_split_diff
+    }
+    sumry_tbl_compare_list.df <- sumry_tbl_compare_list  %>% plyr::ldply()
+    sumry_tbl_compare_list.df.g <- sumry_tbl_compare_list.df %>% 
+      gather(key = score_name, value = score, 2:(ncol(.)-1)) %>%
+      arrange(category, .id, score_name) %>%
+      mutate(.id2 = paste0("(", .id, ")")) %>%
+      unite(col = category_new, category, .id2, sep = " ", remove = FALSE) %>%
+      mutate(score_binary = ifelse(score > 0, 1, ifelse(score < 0 , -1, 0))) #%>%
+    #print(sumry_tbl_compare_list.df.g)
+    return(sumry_tbl_compare_list.df.g)
+  })
+  
+  output$concStatSummaryFishScwgs <- renderText({
+     if(!all(c("fish", "sc-wgs") %in% unique(concDf()$.id))){
+      return(NULL)#"Please upload both FISH and SC-WGS data")
+    }
+
+    sumry_tbl_compare_list.df.g2 <- concDf() %>%
+      select(-category_new, -.id2, -score) %>%
+      spread(key=.id, value = score_binary) %>%
+      mutate(concordance = as.numeric({fish == `sc-wgs`}))
+    tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
+    return(paste0("Concordance between FISH and sc-WGS: ", round(tot_concord,3)))
+  })
+  
+  output$concStatSummaryFishSky <- renderText({
+    if(!all(c("fish", "sky") %in% unique(concDf()$.id))){
+      return(NULL)#"Please upload both FISH and SKY data")
+    }
+    sumry_tbl_compare_list.df.g2 <- concDf() %>%
+      select(-category_new, -.id2, -score) %>%
+      spread(key=.id, value = score_binary) %>%
+      mutate(concordance = as.numeric({fish == sky}))# collapse = ": "))##, .id=.id) #%>%
+    tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
+    return(paste0("Concordance between FISH and SKY: ", round(tot_concord,3)))
+    
+    #return(tot_concord)
+  })
+  #
+  output$concStatSummaryScwgsSky <- renderText({
+    if(!all(c("sc-wgs", "sky") %in% unique(concDf()$.id))){
+      return(NULL)#"Please upload both FISH and SKY data")
+    }
+    sumry_tbl_compare_list.df.g2 <- concDf() %>%
+      select(-category_new, -.id2, -score) %>%
+      spread(key=.id, value = score_binary) %>%
+      mutate(concordance = as.numeric({sky == `sc-wgs`}))# collapse = ": "))##, .id=.id) #%>%
+    tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
+    return(paste0("Concordance between sc-WGS and SKY: ", round(tot_concord,3)))
+    
+    #return(tot_concord)
+  })
+     #sum(sumry_tbl_compare_list.df.g2$concordance)/nrow(sumry_tbl_compare_list.df.g2)
+    
+  output$concPlot <- renderPlot({
+      
+    ggplot(concDf(), aes(x=score_name, y= category_new, fill=score)) + 
+      geom_tile() + 
+      scale_fill_gradient2() +
+      geom_text(aes(label=round(score, 2))) +
+      theme_classic() + theme(axis.ticks = element_blank(),
+                              axis.line = element_blank(),
+                              axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
+                              axis.text.y = element_text(vjust=0.3, hjust = 1)) +
+      coord_fixed(ratio = 1) + xlab("") + ylab("") #+ scale_x_discrete(position = "top") 
+  })
+}
 
 
 
@@ -680,7 +937,7 @@ heatMapUI <- function(id) {
   
   tagList(
     p("This heatmap represents the number of distinct chromosomal states per group. Each column represents a chromosome, and each row represents a distinct chromosomal state per group. The proportion of cells within each group that have the given chromosomal state is shown on the rightmost plot (square black boxes). The darker the square, the greater the proportion of cells within that group that are in that state."),
-    p("Resize the width of your browser window to change the size of the plot"),
+    #p("Resize the width of your browser window to change the size of the plot"),
     plotOutput(ns("chrHeatS2"), height = "800px")
   )
 }

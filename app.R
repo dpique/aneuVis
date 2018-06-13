@@ -272,28 +272,32 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     heatMapUI("sky_test")) #2018-05-30
                                     )), 
                 tabPanel("Hypothesis Testing", icon = icon("random"),
-                         h3("Are groups statistically significantly different from each other
-                            in terms of the degree of numerical aneuploidy?"),
-                         p("How to use this page:"),
-                         p("Three steps: 1. Select the tab of the data type you would like to permute"),
-                         p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
-                         p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
-                           the number of permutations."),
-                         p("Methods: Generate random permutations of the category associated with each observed cell. 
-                           The difference in scores between all possible pairs of categories is calculated after each permutation. 
-                           A p-value is calculated by counting how many permuted ANCA scores are more extreme than
-                           the observed ANCA score."),
-                         p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
-                           between a given pair of groups. there two possible interpretations of the resulting p-value:
-                           not significantly different (p > 0.05, grey color) or significantly different (blue color)."),
-                         h4("Key for the table columns"),
-                         p("- Group 1 and Group 2 are the groups that are being compared"),
-                         p("- nperm_gr_thn_obs is the number of permutations greater than the observed normalized ANCA score"),
-                         p("- pvalue is the pvalue rounded to 2 decimal places,	pval_cut is the categorization of the pvalue into bins (for heatmap purposes)"),
-                         p("- perm_mean is the mean of the anca scores across all permuted samples"),	
-                         p("- perm_dist_2.5% and perm_dist_97.5% are the lower and upper 95% CI for the permuted ANCA scores"),
-                         p("- obs_val is the observed difference in ANCA score between the 2 groups"),
-                         p("- fold_change is the observed difference in ANCA scores divided by the mean permuted difference in ANCA scores. Analogous to fold enrichment above baseline noise."),
+                         #p("There are multiple tabs that can be used to test for differences across experimental groups or data types."),
+                         p("The FISH, SC-WGS, and SKY tabs test for statistically significant differences between experimental groups for the indicated data type."),
+                         p("The 'Multi-platform treatment comparison' tab tests for statistically significant differences between experimental groups across all available data types."),
+                         p("The Comparing Platform Concordance tab shows whether different platforms have the same trend in change of a given statistic between treatment groups."),
+                        # h3("Are groups statistically significantly different from each other
+                        #    in terms of the degree of numerical aneuploidy?"),
+                        # p("How to use this page:"),
+                        # p("Three steps: 1. Select the tab of the data type you would like to permute"),
+                        # p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
+                        # p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
+                        #   the number of permutations."),
+                        # p("Methods: Generate random permutations of the category associated with each observed cell. 
+                        #   The difference in scores between all possible pairs of categories is calculated after each permutation. 
+                        #   A p-value is calculated by counting how many permuted ANCA scores are more extreme than
+                        #   the observed ANCA score."),
+                        # p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
+                        #   between a given pair of groups. there two possible interpretations of the resulting p-value:
+                        #   not significantly different (p > 0.05, grey color) or significantly different (blue color)."),
+                        # h4("Key for the table columns"),
+                        # p("- Group 1 and Group 2 are the groups that are being compared"),
+                        # p("- nperm_gr_thn_obs is the number of permutations greater than the observed normalized ANCA score"),
+                        # p("- pvalue is the pvalue rounded to 2 decimal places,	pval_cut is the categorization of the pvalue into bins (for heatmap purposes)"),
+                        # p("- perm_mean is the mean of the anca scores across all permuted samples"),	
+                        # p("- perm_dist_2.5% and perm_dist_97.5% are the lower and upper 95% CI for the permuted ANCA scores"),
+                        # p("- obs_val is the observed difference in ANCA score between the 2 groups"),
+                        # p("- fold_change is the observed difference in ANCA scores divided by the mean permuted difference in ANCA scores. Analogous to fold enrichment above baseline noise."),
                          
                          tabsetPanel(
                            tabPanel("FISH", 
@@ -304,8 +308,8 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     permPlotTblUI("sky", header = "SKY")),
                            tabPanel("Multi-platform treatment comparison",
                                     permPlotTblMultiInputUI("multiple", header = "Multi-platform")),
-                           
-                           tabPanel("Test platform concordance")
+                           tabPanel("Comparing platform concordance",
+                                   platformConcordanceUI(id = "concord"))
                            
                          )
                          )))
@@ -585,6 +589,13 @@ server <- shinyServer(function(input, output, session) {
   callModule(permPlotTblMultiInput, "multiple", #file_input = reactive(input$sky_file),
              sky_df = reactive(rv$s1), fish_df = reactive(rv$f1), 
              wgs_df = reactive(rv$w1), nPerms = reactive(input$Nperms))
+  
+  #callModule(platformConcordance, "concord", stsTbl = stsTbl)#reactive(stsTbl()))
+  callModule(platformConcordance2, "concord", 
+             sky_df = reactive(rv$s1), 
+             fish_df = reactive(rv$f1), 
+             wgs_df = reactive(rv$w1),
+             numbX = numbX, numbY = numbY)
   
   ###### adding shinyjs buttons - redirection 2018-05-10
   
