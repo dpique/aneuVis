@@ -696,12 +696,6 @@ permPlotTblMultiInput <- function(input, output, session, nPerms, sky_df, fish_d
   #return(perms)
 }
 
-css_style_conc_stat <- function(tag){
-  #color: DarkBlue;
-  paste0("#", tag, "{
-         font-size: 18px;
-         }")
-  }
 
 platformConcordanceUI <- function(id) {
   ns <- NS(id)
@@ -710,75 +704,44 @@ platformConcordanceUI <- function(id) {
     hr(),
     checkboxInput(ns("chrInCommonPC"), label = "Use Chromosomes in Common", value = TRUE, width = NULL),
     #p("Concordance between FISH and sc-WGS"),
-   h3("Concordance between experimental platforms"),
-    #p("The concordance between experimental platforms is listed below." A minimum of 2 or more experimental platforms, 
-   #   each with 2 or more treatments, are required to calculate the concordance."), 
-   #   #The support of the concordance statistic is [0-1], where 1 indicates maximal concordance."),
-   # p("The concordance statistic (CS) is calculated between two experimental platforms. It can be described as the proportion of times that a given statistic 
-  #    changes in the same direction between all possible pairwise combinations of treatments between two different experimental platforms. 
-   #   All statistics listed as columns in the heatmap below are included in the calculation of the CS."),
-    h4("Rationale"),
-    p("The direction of change in the degree of aneuploidy between two treatment groups should be the same regardless of the experimental 
-    approach used (e.g. FISH, SKY, or sc-WGS). In order to test the consistency of the results between experimental platforms (e.g. FISH vs sc-WGS), 
-    we provide a summary of pairwise comparisons between all uploaded experimental platforms. The percentage of statistics (shown as columns in the 
-    heatmap below) that are concordant (i.e that change in the same direction), between all pairwise combinations of treatment groups is reported below."),
-    h4("Interpretation"),
-    p("A value near 100% indicates that the direction of change between treatment groups across the two platforms is mostly the same, 
-      which suggests that the two experimental platforms yield similar trends across the treatment groups."),
-    h4("Requirements"),
-    p("At least two platforms, each with at least two treatment groups, are required for this analysis."),
-    h4("Results"),
+    p("The concordance between different experimental types is listed below. A minimum of 2 or more experimental platforms, 
+      each with 2 or more treatments, are required to calculate the concordance statistic. 
+      The support of the concordance statistic is [0-1], where 1 indicates maximal concordance."),
+    p("The concordance statistic (CS) is calculated between two experimental platforms. It can be described as the proportion of times that a given statistic 
+      changes in the same direction between all possible pairwise combinations of treatments between two different experimental platforms. 
+      All statistics listed as columns in the heatmap below are included in the calculation of the CS."),
     textOutput(ns("concStatSummaryFishScwgs")),
     textOutput(ns("concStatSummaryFishSky")),
     textOutput(ns("concStatSummaryScwgsSky")),
-    tags$head(tags$style(css_style_conc_stat(ns("concStatSummaryFishScwgs")))),
-    tags$head(tags$style(css_style_conc_stat(ns("concStatSummaryFishSky")))),
-    tags$head(tags$style(css_style_conc_stat(ns("concStatSummaryScwgsSky")))),
-    
-    #paste0("#", ns("concStatSummaryFishScwgs"), "{color: red;
-    #                             font-size: 20px;
-    #       font-style: italic;
-    #  }"
-    #                     ))
-    #
-    #tags$head(tags$style(paste0("#", ns("concStatSummaryFishScwgs"), "{color: red;
-    #                             font-size: 20px;
-    #                             font-style: italic;
-    #                             }"
-    #                     ))
-    #),
-    
-    plotOutput(ns("concPlot"), height="800px"),
-  #plotOutput(ns("chrHeatS2"), height = "800px")
-  
-    p("The heatmap above displays the difference in the statistic (columns) between two treatments (rows) for a particular experimental platform (listed in parentheses)")
+    plotOutput(ns("concPlot")),
+    p("The heatmap above displays the absolute pairwise difference in the statistic (columns) between two treatments (rows) for a particular experimental platform (listed in parentheses)")
   )
 }
 
 platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df, numbX, numbY) {
   
-  stsTbl2 <- reactive({ #eventReactive({input$submit_fish | input$submit_sky | input$reset_sky | input$reset_fish |
+  #stsTbl2 <- reactive({ #eventReactive({input$submit_fish | input$submit_sky | input$reset_sky | input$reset_fish |
       #input$reset_wgs | input$submit_wgs |  as.numeric(input$numberOfX) | as.numeric(input$numberOfY) | 
       #input$chrInCommonPC}, {
         
-        s <- sky_df() #%>% arrange(category), NA) ifelse(!is.null(fish_df()), 
-        f <- fish_df() #%>% arrange(category), NA) #fish_df() %>% arrange(category)
-        w <- wgs_df() #ifelse(!is.null(wgs_df()), %>% arrange(category), NA) #wgs_df() %>% arrange(category)
+        s <- s1 #sky_df() #%>% arrange(category), NA) ifelse(!is.null(fish_df()), 
+        f <- f1 #fish_df() #%>% arrange(category), NA) #fish_df() %>% arrange(category)
+        w <- w1 #wgs_df() #ifelse(!is.null(wgs_df()), %>% arrange(category), NA) #wgs_df() %>% arrange(category)
         
         validate(
           need(!is.null(s) | !is.null(f) | !is.null(w), "Please upload at least 1 file!")
         )     
         
-        numX = as.numeric(numbX())
-        numY = as.numeric(numbY())
+        #numX = as.numeric(numbX())
+        #numY = as.numeric(numbY())
         list_to_pass <- list(s, f, w) %>% purrr::compact() #2018-05-05 issue here?
         
-        if(input$chrInCommonPC){
-          chrInCom <- map(list_to_pass, .f = ~pull(.x, chr) %>% as.character() %>% unique())# %>% unique# select()) intersect()
-          chrInCom2 <- Reduce(intersect, chrInCom)
-          list_to_pass <- map(list_to_pass, .f = ~filter(.x, as.character(chr) %in% chrInCom2)) # %>% 
-          print(list_to_pass)
-        }
+        #if(input$chrInCommonPC){
+        #  chrInCom <- map(list_to_pass, .f = ~pull(.x, chr) %>% as.character() %>% unique())# %>% unique# select()) intersect()
+        #  chrInCom2 <- Reduce(intersect, chrInCom)
+        #  list_to_pass <- map(list_to_pass, .f = ~filter(.x, as.character(chr) %in% chrInCom2)) # %>% 
+        #  print(list_to_pass)
+        #}
         
         aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score, numX=numX, numY=numY)
         
@@ -787,22 +750,22 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
         anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score, numX=numX, numY=numY)
         instab_idx = purrr::map_df(.x = list_to_pass, .f = calc_instab_idx)
         perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy, numX=numX, numY=numY)
-        sumStats <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
+        stsTbl2 <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
           select(category, file_type, n, everything())
-        return(sumStats)
-        print(sumStats)
-      })
+       # return(sumStats)
+        #print(sumStats)
+      #})
 
   #can we just do an odds ratio type testo
   
-  concDf <- reactive({
+  #concDf <- reactive({
     #stsTbl <- read_csv("~/Downloads/2018-06-12-aneuvis-stats-by-group.csv")
-    pairwise_combo_cats <- combn(unique(stsTbl2()$category), 2)
+    pairwise_combo_cats <- combn(unique(stsTbl2$category), 2)
     sumry_tbl_compare_list <- list() #@sumry_tbl_compare
     #fish vs single cell wgs
     for(i in 1:ncol(pairwise_combo_cats)){
       #i=3
-      stsTbl_split <- stsTbl2() %>% 
+      stsTbl_split <- stsTbl2 %>% 
         filter(category %in% pairwise_combo_cats[,i]) %>% 
         split(f = .$file_type)
       stsTbl_split_diff <- stsTbl_split %>%
@@ -812,59 +775,56 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
       sumry_tbl_compare_list[[i]] <- stsTbl_split_diff
     }
     sumry_tbl_compare_list.df <- sumry_tbl_compare_list  %>% plyr::ldply()
-    sumry_tbl_compare_list.df.g <- sumry_tbl_compare_list.df %>% 
+    concDf <- sumry_tbl_compare_list.df %>% 
       gather(key = score_name, value = score, 2:(ncol(.)-1)) %>%
       arrange(category, .id, score_name) %>%
       mutate(.id2 = paste0("(", .id, ")")) %>%
       unite(col = category_new, category, .id2, sep = " ", remove = FALSE) %>%
       mutate(score_binary = ifelse(score > 0, 1, ifelse(score < 0 , -1, 0))) #%>%
     #print(sumry_tbl_compare_list.df.g)
-    return(sumry_tbl_compare_list.df.g)
-  })
+    #return(sumry_tbl_compare_list.df.g)
+  #})
   
   output$concStatSummaryFishScwgs <- renderText({
     if(!all(c("fish", "sc-wgs") %in% unique(concDf()$.id))){
       return(NULL)#"Please upload both FISH and SC-WGS data")
     }
     
-   # Nperms = 1e2
-   # tot_concord_rand_vect <- rep(0, Nperms)
-   # for(i in 1:Nperms){
-   #   sumry_tbl_compare_list.df.g2.rand <- sumry_tbl_compare_list.df.g %>%
-   #     select(-category_new, -.id2, -score) %>%
-   #     spread(key=.id, value = score_binary) %>%
-   #     mutate(fish = sample(fish), `sc-wgs` = sample(`sc-wgs`)) %>%
-   #     mutate(concordance = as.numeric({fish == `sc-wgs`})) 
-   #   tot_concord_rand <- sumry_tbl_compare_list.df.g2.rand %>% {sum(.$concordance)/nrow(.)}
-   #   tot_concord_rand_vect[i] <- tot_concord_rand
-   # }
-
-     
-    sumry_tbl_compare_list.df.g2 <- concDf() %>% #sumry_tbl_compare_list.df.g %>%#
-      select(-category_new, -.id2, -score) %>%
-      spread(key=.id, value = score_binary) %>%
-      mutate(concordance = as.numeric({fish == `sc-wgs`}))
-    tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
-    #return(paste0("Concordance between FISH and sc-WGS: ", round(tot_concord,3)))
-    #return(paste0(round(tot_concord,3)*100, "% of the statistics between FISH and sc-WGS data shown below change in the same direction between treatment groups."))
-    return(paste0(round(tot_concord,3)*100, "% concordance between FISH and sc-WGS data."))
-  })
-  
-  output$concStatSummaryFishSky <- renderText({
-    if(!all(c("fish", "sky") %in% unique(concDf()$.id))){
-      return(NULL)#"Please upload both FISH and SKY data")
+    Nperms = 1e2
+    tot_concord_rand_vect <- rep(0, Nperms)
+    for(i in 1:Nperms){
+      sumry_tbl_compare_list.df.g2.rand <- sumry_tbl_compare_list.df.g %>%
+        select(-category_new, -.id2, -score) %>%
+        spread(key=.id, value = score_binary) %>%
+        mutate(fish = sample(fish), `sc-wgs` = sample(`sc-wgs`)) %>%
+        mutate(concordance = as.numeric({fish == `sc-wgs`})) 
+      tot_concord_rand <- sumry_tbl_compare_list.df.g2.rand %>% {sum(.$concordance)/nrow(.)}
+      tot_concord_rand_vect[i] <- tot_concord_rand
     }
-    sumry_tbl_compare_list.df.g2 <- concDf() %>%
+     
+    
+    
+ # sumry_tbl_compare_list.df.g2 <- sumry_tbl_compare_list.df.g %>%#concDf() %>%
+ #   select(-category_new, -.id2, -score) %>%
+ #   spread(key=.id, value = score_binary) %>%
+ #   mutate(concordance = as.numeric({fish == `sc-wgs`}))
+ # tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
+ # return(paste0("Concordance between FISH and sc-WGS: ", round(tot_concord,3)))
+ #)
+  
+  #output$concStatSummaryFishSky <- renderText({
+    #if(!all(c("fish", "sky") %in% unique(concDf()$.id))){
+    #  return(NULL)#"Please upload both FISH and SKY data")
+    #}
+    sumry_tbl_compare_list.df.g2 <- concDf %>%
       select(-category_new, -.id2, -score) %>%
       spread(key=.id, value = score_binary) %>%
       mutate(concordance = as.numeric({fish == sky}))# collapse = ": "))##, .id=.id) #%>%
-    tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
-    #return(paste0("Concordance between FISH and SKY: ", round(tot_concord,3)))
-    #return(paste0(round(tot_concord,3)*100, "% of the statistics between FISH and SKY data shown below change in the same direction between treatment groups."))
-    return(paste0(round(tot_concord,3)*100, "% concordance between FISH and SKY data."))
+    concStatSummaryFishSky <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
+    return(paste0("Concordance between FISH and SKY: ", round(concStatSummaryFishSky,3)))
     
     #return(tot_concord)
-  })
+  #})
   #
   output$concStatSummaryScwgsSky <- renderText({
     if(!all(c("sc-wgs", "sky") %in% unique(concDf()$.id))){
@@ -875,10 +835,7 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
       spread(key=.id, value = score_binary) %>%
       mutate(concordance = as.numeric({sky == `sc-wgs`}))# collapse = ": "))##, .id=.id) #%>%
     tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
-    #return(paste0(round(tot_concord,3)*100, "% of the statistics between sc-WGS and SKY data shown below change in the same direction between treatment groups."))
-    return(paste0(round(tot_concord,3)*100, "% concordance between sc-WGS and SKY data."))
-    
-    #return(paste0("Concordance between sc-WGS and SKY: ", round(tot_concord,3)))
+    return(paste0("Concordance between sc-WGS and SKY: ", round(tot_concord,3)))
     
     #return(tot_concord)
   })
@@ -892,13 +849,9 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
       geom_text(aes(label=round(score, 2))) +
       theme_classic() + theme(axis.ticks = element_blank(),
                               axis.line = element_blank(),
-                              axis.text = element_text(size=16),
-                              title= element_text(size=18),
                               axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
                               axis.text.y = element_text(vjust=0.3, hjust = 1)) +
-      coord_fixed(ratio = 1) + xlab("") + ylab("") + #+ scale_x_discrete(position = "top") _
-      labs(fill='Difference') + 
-      ggtitle("Pairwise differences between treatment groups \nacross experimental platforms for 8 summary statistics")
+      coord_fixed(ratio = 1) + xlab("") + ylab("") #+ scale_x_discrete(position = "top") 
   })
 }
 
