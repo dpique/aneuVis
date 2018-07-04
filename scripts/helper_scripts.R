@@ -893,7 +893,7 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
       theme_classic() + theme(axis.ticks = element_blank(),
                               axis.line = element_blank(),
                               axis.text = element_text(size=16),
-                              title= element_text(size=18),
+                              title = element_text(size=18),
                               axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
                               axis.text.y = element_text(vjust=0.3, hjust = 1)) +
       coord_fixed(ratio = 1) + xlab("") + ylab("") + #+ scale_x_discrete(position = "top") _
