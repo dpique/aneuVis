@@ -719,14 +719,15 @@ platformConcordanceUI <- function(id) {
    #   All statistics listed as columns in the heatmap below are included in the calculation of the CS."),
     h4("Rationale"),
     p("The direction of change in the degree of aneuploidy between two treatment groups should be the same regardless of the experimental 
-    approach used (e.g. FISH, SKY, or sc-WGS). In order to test the consistency of the results between experimental platforms (e.g. FISH vs sc-WGS), 
+    platform used (e.g. FISH, SKY, or sc-WGS). In order to test the concordance of results between experimental platforms (e.g. FISH vs sc-WGS), 
     we provide a summary of pairwise comparisons between all uploaded experimental platforms. The percentage of statistics (shown as columns in the 
     heatmap below) that are concordant (i.e that change in the same direction), between all pairwise combinations of treatment groups is reported below."),
     h4("Interpretation"),
     p("A value near 100% indicates that the direction of change between treatment groups across the two platforms is mostly the same, 
       which suggests that the two experimental platforms yield similar trends across the treatment groups."),
     h4("Requirements"),
-    p("At least two platforms, each with at least two treatment groups, are required for this analysis."),
+    p("At least two platforms, each with at least two treatment groups, are required to calculate a percent concordance for this analysis."),
+    p("A heatmap will be displayed that shows the difference between treatment groups for each experimental platform, even if the above requirement is not met."),
     h4("Results"),
     textOutput(ns("concStatSummaryFishScwgs")),
     textOutput(ns("concStatSummaryFishSky")),
@@ -747,11 +748,12 @@ platformConcordanceUI <- function(id) {
     #                             }"
     #                     ))
     #),
-    
-    plotOutput(ns("concPlot"), height="800px"),
+  p("The heatmap below displays the difference in the statistic (columns) 
+    between two treatments (rows) for a particular experimental platform (listed in parentheses)"),
+  
+    plotOutput(ns("concPlot"), height="800px")
   #plotOutput(ns("chrHeatS2"), height = "800px")
   
-    p("The heatmap above displays the difference in the statistic (columns) between two treatments (rows) for a particular experimental platform (listed in parentheses)")
   )
 }
 
@@ -766,7 +768,7 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
         w <- wgs_df() #ifelse(!is.null(wgs_df()), %>% arrange(category), NA) #wgs_df() %>% arrange(category)
         
         validate(
-          need(!is.null(s) | !is.null(f) | !is.null(w), "Please upload at least 1 file!")
+          need(!is.null(s) | !is.null(f) | !is.null(w), " ")# "Please upload at least 1 file!")
         )     
         
         numX = as.numeric(numbX())
@@ -1036,7 +1038,7 @@ heatMap <- function(input, output, session, input_df, file_type, orig_input){
   output$chrHeatS2 <- renderPlot({
     
     validate(
-      need(!is.null(orig_input()), paste0("Please upload at least 1 ", file_type, " file!"))
+      need(!is.null(orig_input()), " ") #paste0("Please upload at least 1 ", file_type, " file!"))
     ) 
     #print(head(s4R()))
     
@@ -1172,4 +1174,47 @@ retWgsDf <- function(wgs_datapath, wgs_key_datapath){
     mutate(file_type = "sc-wgs") %>%
     .[ , order(names(.))]
   return(g2)
+}
+
+
+addStatSummary <- function(){
+  tagList(
+  p("Each row in this table represents
+                           a different file that was uploaded. The columns represent the following:"),
+  
+  img(src="expl_summary_stat_vis.png", width=800),
+  p(
+    tags$ul(
+      tags$li(
+        p("Columns labeled diploid, polyploid, and aneuploid represent the proportion of cells 
+          in that state per treatment (\\(P_D\\), \\(P_P\\), and \\(P_A\\), respectively).")
+        ),
+      tags$ul(
+        tags$li("Diploid: cells containing 2 copies of all the chromosomes analyzed"),
+        tags$li("Aneuploid: any cell that has at least one chromosome with copy number different than 2, as long as the copy number is not the same for all chromosomes analyzed. 
+                Note: Cells with 1 copy of all chromosomes analyzed will be classified as aneuploid."),
+        tags$li("Polyploid: cells with matching chromosome copy numbers for all the chromosomes analyzed, as long as they are higher than 2.")
+        ),
+      #),
+      tags$li(
+        
+        "The column labeled (n) represents the total number of cells or chromosomes analyzed within the file."
+      ),
+      tags$li(
+        "The average number of copy alterations per group (anca_score) was calculated as in",
+        tags$a(target = "_blank", href = "https://www.ncbi.nlm.nih.gov/pubmed/12775914", "Blegen et al 2003")
+      ),
+      tags$li(
+        "The aneuploidy and heterogeneity scores were calculated as in",
+        tags$a(
+          target = "_blank",
+          href = "https://www.ncbi.nlm.nih.gov/pubmed/27246460",
+          "Bakker et al 2016 (Suppl.Methods & Table S2)"
+        )
+      )
+      )),
+  p("A tabular and visual representation of the summary statistics is shown below"),
+  img(src="expl_summary_stat.png", width=900),
+  img(src="expl_summary_stat3.png", width=900)
+  )
 }

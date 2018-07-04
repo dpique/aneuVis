@@ -177,55 +177,20 @@ ui <- tagList(shinyjs::useShinyjs(),
                          tabsetPanel(
                            tabPanel("Stats By Group", 
                                     downloadButton("stats_report2", label="Download Stats Table by Group (.csv)"), 
-                                    DT::dataTableOutput("sumryStatsTbl")),
+                                    DT::dataTableOutput("sumryStatsTbl"), hr(), addStatSummary()),
                            tabPanel("Stats By Group & Chromosome", 
                                     downloadButton("stats_report3", label="Download Stats Table by Group and Chromosome (.csv)"),
-                                    DT::dataTableOutput("sumryStatsTblPerChr")),
+                                    DT::dataTableOutput("sumryStatsTblPerChr"), hr(), addStatSummary()),
                            tabPanel("SC-WGS Chromosome-level Summary", 
+                                    hr(), 
                                     p("A 'wide' table of single cell whole genome sequencing (sc-wgs) data is available for download, with chromosomes as columns and samples as rows. 
                                       This table contains the weighted average copy number (by bin size) rounded to the nearest integer per chromosome per sample."),
                                     downloadButton("g2T.d", "Download"),
-                                    DT::dataTableOutput("g2T"))
-                         ), 
-                         hr(),
-                         p("Each row in this table represents
-                           a different file that was uploaded. The columns represent the following:"),
-                         
-                         img(src="expl_summary_stat_vis.png", width=800),
-                         p(
-                           tags$ul(
-                             tags$li(
-                               p("Columns labeled diploid, polyploid, and aneuploid represent the proportion of cells 
-                                 in that state per treatment (\\(P_D\\), \\(P_P\\), and \\(P_A\\), respectively).")
-                               ),
-                             tags$ul(
-                               tags$li("Diploid: cells containing 2 copies of all the chromosomes analyzed"),
-                               tags$li("Aneuploid: any cell that has at least one chromosome with copy number different than 2, as long as the copy number is not the same for all chromosomes analyzed. 
-                                       Note: Cells with 1 copy of all chromosomes analyzed will be classified as aneuploid."),
-                               tags$li("Polyploid: cells with matching chromosome copy numbers for all the chromosomes analyzed, as long as they are higher than 2.")
-                               ),
-                             #),
-                             tags$li(
-                               
-                               "The column labeled (n) represents the total number of cells or chromosomes analyzed within the file."
-                             ),
-                             tags$li(
-                               "The average number of copy alterations per group (anca_score) was calculated as in",
-                               tags$a(target = "_blank", href = "https://www.ncbi.nlm.nih.gov/pubmed/12775914", "Blegen et al 2003")
-                             ),
-                             tags$li(
-                               "The aneuploidy and heterogeneity scores were calculated as in",
-                               tags$a(
-                                 target = "_blank",
-                                 href = "https://www.ncbi.nlm.nih.gov/pubmed/27246460",
-                                 "Bakker et al 2016 (Suppl.Methods & Table S2)"
-                               )
-                             )
-                             )),
-                         p("A tabular and visual representation of the summary statistics is shown below"),
-                         img(src="expl_summary_stat.png", width=900),
-                         img(src="expl_summary_stat3.png", width=900)
-                         
+                                    DT::dataTableOutput("g2T")),
+                           tabPanel("Platform concordance",
+                                    platformConcordanceUI(id = "concord"))
+                           
+                         )
                          ),
                 tabPanel("Visualization", icon = icon("bar-chart-o"), value = "visTab",  #icon = icon("heatmap"), #
                          downloadButton("report", label="Download visualizations (.pdf)", class = "butt"),
@@ -307,10 +272,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                            tabPanel("SKY", 
                                     permPlotTblUI("sky", header = "SKY")),
                            tabPanel("Multi-platform treatment comparison",
-                                    permPlotTblMultiInputUI("multiple", header = "Multi-platform")),
-                           tabPanel("Comparing platform concordance",
-                                   platformConcordanceUI(id = "concord"))
-                           
+                                    permPlotTblMultiInputUI("multiple", header = "Multi-platform"))
                          )
                          )))
 
@@ -389,7 +351,7 @@ server <- shinyServer(function(input, output, session) {
       input$reset_wgs | input$submit_wgs |  as.numeric(input$numberOfX) | as.numeric(input$numberOfY)}, {
         
         validate(
-          need(!is.null(rv$w1) | !is.null(rv$f1) | !is.null(rv$s1), "Please upload at least 1 file!")
+          need(!is.null(rv$w1) | !is.null(rv$f1) | !is.null(rv$s1), " ") #"Please upload at least 1 file!")
         )     
         
         numX = as.numeric(numbX())
@@ -411,7 +373,7 @@ server <- shinyServer(function(input, output, session) {
   output$sumryStatsTbl <- DT::renderDataTable({
     
     validate(
-      need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$wgs_file), 'Please upload at least 1 file!')
+      need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$wgs_file), " ") #'Please upload at least 1 file!')
     ) 
     DT::datatable(stsTbl(),       
                   filter = list(position = 'top', clear = FALSE),
@@ -423,7 +385,7 @@ server <- shinyServer(function(input, output, session) {
       input$reset_wgs | input$submit_wgs |  as.numeric(input$numberOfX) | as.numeric(input$numberOfY)}, {
         
         validate(
-          need(!is.null(rv$w1) | !is.null(rv$f1) | !is.null(rv$s1), "Please upload at least 1 file!")
+          need(!is.null(rv$w1) | !is.null(rv$f1) | !is.null(rv$s1), " ")# "Please upload at least 1 file!")
         )     
         
         numX = as.numeric(numbX())
@@ -440,7 +402,7 @@ server <- shinyServer(function(input, output, session) {
   
   output$sumryStatsTblPerChr <- DT::renderDataTable({
     validate(
-      need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$wgs_file), 'Please upload at least 1 file!')
+      need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$wgs_file), " ") #'Please upload at least 1 file!')
     ) 
     DT::datatable(stsTblPerChr(),       
                   filter = list(position = 'top', clear = FALSE),
@@ -668,7 +630,7 @@ server <- shinyServer(function(input, output, session) {
   
   f4Plot <- reactive({
     validate(
-      need(!is.null(input$fish_files), 'Please upload at least 1 FISH file!')
+      need(!is.null(input$fish_files), " ") #'Please upload at least 1 FISH file!')
     )
     
     f4 <- rv$f1 %>% 
