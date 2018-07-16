@@ -1,6 +1,6 @@
 ---
 title: "Aneuvis Visualizations Report"
-author: "aneuvis 0.6"
+author: "aneuvis 0.7"
 date: "`r format(Sys.time(), '%B %d, %Y')`"
 output: 
   pdf_document:
@@ -46,8 +46,6 @@ p <- ggtern() +
   guides(fill=guide_legend(title="Legend")) +
   limit_tern(1.03,1.03,1.03) + 
   theme(text=element_text(size=9))
-  #theme_classic() + 
-  #theme(legend.position="top")
 
 print(p)
 ```

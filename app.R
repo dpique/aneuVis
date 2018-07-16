@@ -15,7 +15,6 @@ library(RColorBrewer)
 #require(openxlsx)
 library(Cairo)
 #library(Rtools)
-
 #library(DT)
 source("scripts/helper_scripts.R")
 
@@ -44,10 +43,10 @@ ui <- tagList(shinyjs::useShinyjs(),
                                           "Spectral karyotyping (SKY)"), "- analyze chromosome counts and structural variation from all chromosomes.")
                          ),
                          p("The output from aneuvis is divided into 3 parts: Table Summary, Visualization, and Hypothesis Testing"),
-                         p("See the image below for an overview of Aneuvis"),
+                         p("See the image below for an overview of aneuvis"),
                          h3("Do treatments A and B induce aneuploidy?"),
-                         img(src="aneuvis_layout.png", width=700),
-                         p("Watch the tutorial below to get started. (forthcoming)")),
+                         img(src="aneuvis_layout.png", width=700)
+                ),
                 tabPanel("Documentation", icon=icon("book"),
                          p("Aneuvis is the product of a collaboration between the",
                            tags$a(target = "_blank", 
@@ -72,8 +71,14 @@ ui <- tagList(shinyjs::useShinyjs(),
                            tags$ul("This could be an issue with the file encoding. Try opening the file and saving it (using 'Save As...') with the same file name (without modifying the file). Then, try re-uploading the file into aneuvis."),
                            tags$li(tags$b("I have an idea to improve aneuvis. How should I share this?")),
                            tags$ul("Email me (daniel.pique@med.einstein.yu.edu) with any suggestions. You can also open an issue on Github or submit a pull request.")
-                         )
-                         
+                         ),
+                         hr(),
+                         h3("Video tutorial of aneuvis"),#"Watch the tutorial below to get started. (forthcoming)"),
+                         #fluidPage(
+                         #  tags$video(type = "video/mp4",src = "trial5_good.mp4", controls = "controls", width=700)
+                         #)#,https://www.youtube.com/watch?v=SWwBYFNb2PA
+                         HTML(paste0('<iframe width="700" height="500" src="https://www.youtube.com/embed/', "SWwBYFNb2PA" ,'" frameborder="5" allowfullscreen></iframe>'))
+                         #https://www.youtube.com/watch?v=aircAruvnKk
                 ),
                 tabPanel("Upload Data", icon=icon("upload"), value = "uploadTab",
                          tabsetPanel(
@@ -81,11 +86,17 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     h3("Upload fluorescence in situ hybridization (FISH) data"),
                                     p("Note: All FISH files to be compared must be uploaded together; otherwise, files will overwrite each other if uploaded 1 by 1."),
                                     fileInput(
-                                      inputId = "fish_files", #files
-                                      label = ".xlsx or .xls", #, see file structure guide below",
-                                      multiple = TRUE,
-                                      accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv")
+                                      'fish_files', 
+                                      span(".xlsx or .xls",
+                                           tags$a(
+                                             "(example data)",
+                                             href = "https://docs.google.com/uc?export=download&id=1ZO9jWicY-5WohvGbQi_WrQWcDaram5wZ"
+                                           )
+                                      ),
+                                      accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv"),
+                                      multiple = TRUE 
                                     ),
+
                                     actionButton("submit_fish", "Submit and Go to Table Summary"),
                                     actionButton('reset_fish', 'Reset Input'),
                                     #Resetting input: https://gist.github.com/bborgesr/07406b30ade8a011e59971835bf6c6f7
@@ -97,28 +108,30 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     p("Multiple excel files, each with the same # of chromosomes, can be uploaded."),
                                     p("All files *must* have same column names in row 1. Ex. Chr17 and Chr 17 are different"), 
                                     p("Each file will be treated as a separate 'condition'."),
-                                    p("The name of each file (before the .xls or .xlsx extension) will be the 'category' "),
-                                    hr(),
-                                    h3("Download example data"),
-                                    
-                                    p("Download example 2-chromosome FISH data ", 
-                                      tags$a(target = "_blank", 
-                                             href = "https://docs.google.com/uc?export=download&id=1ZO9jWicY-5WohvGbQi_WrQWcDaram5wZ", "here"), 
-                                      " (zip file)")
+                                    p("The name of each file (before the .xls or .xlsx extension) will be the 'category' ")
                            ),
-                           
-                           #p("Example FISH data is available for download here")),
-                           #),
+
                            tabPanel("SC-WGS",
                                     h3("Upload single cell whole genome sequencing (sc-wgs) data"),
                                     fileInput(
                                       inputId = "wgs_file",
-                                      label = "Copy Number File (.txt)", #names must match those in gnko
+                                      label = span("Copy Number File (.txt)",
+                                           tags$a(
+                                             "(example data)",
+                                             href = "https://docs.google.com/uc?export=download&id=1VW35NIXSCu7OKaFTSFF_LacwjBqM9JWo"
+                                           )
+                                      ),
+                                      #label = "Copy Number File (.txt)", #names must match those in gnko
                                       multiple = FALSE,
                                       accept = ".txt"), 
                                     fileInput(
                                       inputId = "wgs_key",
-                                      label = "Copy Number Key (.xls or .xlsx)", #names must match those in gnko
+                                      label = span("Sample Key (.xls or .xlsx)",
+                                                   tags$a(
+                                                     "(example key)",
+                                                     href = "https://docs.google.com/uc?export=download&id=1Yon70xRNv693qSjANrADW1WHSHkZ-2Xj"
+                                                   )
+                                      ),
                                       multiple = FALSE,
                                       accept = c(".xlsx", ".xls")#, ".csv", ".txt", ".tsv")
                                     ),
@@ -132,23 +145,23 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     p("One copy number file can be uploaded at a time."),
                                     h4("Layout of the key"),
                                     img(src="ginkgo_key.png", width=400),
-                                    p("Download example sc-WGS data (processed using Ginkgo)", 
-                                      tags$a(target = "_blank", 
-                                             href= "https://docs.google.com/uc?export=download&id=1VW35NIXSCu7OKaFTSFF_LacwjBqM9JWo",
-                                             "here"), 
-                                      "(original data on Ginkgo website linked", 
+                                    p("Original data on Ginkgo website linked Download example sc-WGS data (processed using Ginkgo)", 
                                       tags$a(target = "_blank", 
                                              href= "http://qb.cshl.edu/ginkgo/uploads/_t10breast_navin/SegCopy?uniq=1210441",
-                                             "here)")), 
-                                    p("Download example sc-WGS key", 
-                                      tags$a(target = "_blank",
-                                             href="https://docs.google.com/uc?export=download&id=1Yon70xRNv693qSjANrADW1WHSHkZ-2Xj", "here"))
-                           ),
+                                             "here)"))
+                            ),
                            tabPanel("SKY",
                                     h3("Upload spectral karyotype (SKY) data"),
                                     fileInput(
                                       inputId = "sky_file",
-                                      label = "Upload SKY File (.xls, .xlsx)", #names must match those in gnko
+                                      #label = "Upload SKY File (.xls, .xlsx)", #names must match those in gnko
+                                      label = span("Upload SKY File (.xls, .xlsx)",
+                                                   tags$a(
+                                                     "(example data)",
+                                                     href = "https://docs.google.com/uc?export=download&id=1hUP9yCWbDeh6Yf2IpR5LtaFs4iFK86tp"
+                                                   )
+                                      ),
+                                      
                                       multiple = FALSE,
                                       accept = c(".xlsx", ".xls")#c(".csv", ".txt", ".tsv")
                                     ), 
@@ -158,9 +171,6 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     h3("SKY file structure guide"),
                                     img(src="sky_layout.png", width=800),
                                     p("One SKY copy number file should be uploaded at a time."),
-                                    p("Download example SKY data", 
-                                      tags$a(target = "_blank", 
-                                             href="https://docs.google.com/uc?export=download&id=1hUP9yCWbDeh6Yf2IpR5LtaFs4iFK86tp", "here")),
                                     p("Access a list of International System for Chromosome Nomenclature (ISCN) symbols", 
                                       tags$a(target = "_blank", 
                                              href="https://cgap.nci.nih.gov/Chromosomes/ISCNSymbols", "here"))))),
@@ -239,8 +249,8 @@ ui <- tagList(shinyjs::useShinyjs(),
                 tabPanel("Hypothesis Testing", icon = icon("random"),
                          #p("There are multiple tabs that can be used to test for differences across experimental groups or data types."),
                          p("The FISH, SC-WGS, and SKY tabs test for statistically significant differences between experimental groups for the indicated data type."),
-                         p("The 'Multi-platform treatment comparison' tab tests for statistically significant differences between experimental groups across all available data types."),
-                         p("The Comparing Platform Concordance tab shows whether different platforms have the same trend in change of a given statistic between treatment groups."),
+                         p("The 'Multi-platform' tab tests for statistically significant differences between experimental groups across all available data types."),
+                        # p("The Comparing Platform Concordance tab shows whether different platforms have the same trend in change of a given statistic between treatment groups."),
                         # h3("Are groups statistically significantly different from each other
                         #    in terms of the degree of numerical aneuploidy?"),
                         # p("How to use this page:"),
@@ -271,7 +281,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     permPlotTblUI("sc-wgs", header = "Single Cell Whole Genome Sequencing")),
                            tabPanel("SKY", 
                                     permPlotTblUI("sky", header = "SKY")),
-                           tabPanel("Multi-platform treatment comparison",
+                           tabPanel("Multi-platform",
                                     permPlotTblMultiInputUI("multiple", header = "Multi-platform"))
                          )
                          )))

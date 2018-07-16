@@ -416,7 +416,7 @@ retPermPlotDf <- function(input_df, fxn, nPerms){
     as_tibble()
   shuf_dists_mean <- Reduce("+", shuf_dists) / length(shuf_dists)
   shuf_dists_mean2 <- as.vector(shuf_dists_mean) %>% as_tibble() %>% rename(perm_mean = value)
-  obs_dist2 <- as.vector(obs_dist) %>% as_tibble() %>% rename(obs_val = value)
+  obs_dist2 <- as.vector(obs_dist) %>% as_tibble() %>% rename(abs_diff = value)
   
   shuf_dists_sd <- lapply(shuf_dists, as.vector) 
   shuf_dists_ci <- do.call(rbind, shuf_dists_sd) %>% 
@@ -429,11 +429,12 @@ retPermPlotDf <- function(input_df, fxn, nPerms){
   categs <- as_tibble(t(combn(x = unique(input_df$category), m = 2))) %>% 
     bind_cols(shuf_dists_aneupl) %>%
     mutate(pvalue = sapply(value, pvalFxn2, nPerms),
-           pval_cut = cut(pvalue, 
+           qvalue = p.adjust(p = pvalue, method = "BH"),
+           qval_cut = cut(qvalue, 
                           breaks = c(0, 0.001, 0.01, 0.05, 1),
                           labels = brk_lbls))
   categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
-    mutate(fold_change = obs_val / (perm_mean)) %>%
+    mutate(fold_change = abs_diff / (perm_mean)) %>%
     mutate(value = nPerms-value)
    return(categs2)
 }
@@ -468,8 +469,7 @@ permPlotTblUI <- function(id, header) {
   tagList(
     hr(),
     h3(header),
-    h3("Are groups statistically significantly different from each other
-                            in terms of the degree of numerical aneuploidy?"),
+    h3("Do experimental groups differ in the degree of numerical chromosomal variation or aneuploidy?"),
     sliderInput(ns("Nperms"), "Number of permutations:",
                 min = 0, max = 5000, value = 500, step = 500
     ),
@@ -482,30 +482,54 @@ permPlotTblUI <- function(id, header) {
     actionButton(ns("permute_action"), "Permute"),
     p("Please wait for a few minutes for the permutation..."),
     tableOutput(ns("permTbl")),
-    plotOutput(ns("permPlot")),
     
-    p("How to use this page:"),
-    p("Three steps: 1. Select the tab of the data type you would like to permute"),
-    p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
-    p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
-      the number of permutations."),
-    p("Methods: Generate random permutations of the category associated with each observed cell. 
+    fluidRow(column(3, tagList(
+      h3("Instructions (3 steps)"),
+      #p("How to use this page:"),
+      p(paste0("1. Select the tab of the data type you would like to permute. This tab is for permutation of the ", 
+               header, " data.")),
+      p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
+      p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
+        the number of permutations.")
+    )), column(9, plotOutput(ns("permPlot")))),
+#)
+    
+    #plotOutput(ns("permPlot")),
+    
+    
+    #h3("Instructions (3 steps)"),
+    ##p("How to use this page:"),
+    #p(paste0("1. Select the tab of the data type you would like to permute. This tab is for permutation of the ", 
+    #         header, " data.")),
+    #p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
+    #p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
+    #  the number of permutations."),
+    h3("Interpretation of table columns"),
+    tags$ul(
+      tags$li("Group 1 and Group 2 are the groups that are being compared"),
+      tags$li("nperm_gr_thn_obs is the number of permutations greater than the observed score"),
+      tags$li("pvalue is the p-value rounded to 2 decimal places"),
+      tags$li("qvalue is the Benjamini-Hochberg adjusted p-value, and qval_cut is the categorization of the q-value into bins (for heatmap purposes)"),
+      tags$li("perm_mean is the mean of the anca scores across all permuted samples"),	
+      tags$li("perm_dist_2.5% and perm_dist_97.5% are the lower and upper 95% CI for the permuted scores"),
+      tags$li("abs_diff is the absolute value of the observed difference in score between the 2 groups"),
+      tags$li("fold_change is the abs_diff in scores divided by the mean permuted difference in scores. Analogous to fold enrichment above baseline noise.")
+    ),
+    h3("Interpretation of heatmap"),
+    p("The heatmap shows the absolute value of the difference between each possible pair of treatment groups.
+      This is the value shown within each cell.
+      The grid is colored by the q-value, which tests whether the observed value is no greater than chance."),
+    
+    h3("Methods"),
+    p("Generate random permutations of the category associated with each observed cell. 
       The difference in scores between all possible pairs of categories is calculated after each permutation. 
-      A p-value is calculated by counting how many permuted ANCA scores are more extreme than
-      the observed ANCA score."),
-    p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
-      between a given pair of groups. there two possible interpretations of the resulting p-value:
-      not significantly different (p > 0.05, grey color) or significantly different (blue color)."),
-    h4("Key for the table columns"),
-    p("- Group 1 and Group 2 are the groups that are being compared"),
-    p("- nperm_gr_thn_obs is the number of permutations greater than the observed normalized ANCA score"),
-    p("- pvalue is the pvalue rounded to 2 decimal places,	pval_cut is the categorization of the pvalue into bins (for heatmap purposes)"),
-    p("- perm_mean is the mean of the anca scores across all permuted samples"),	
-    p("- perm_dist_2.5% and perm_dist_97.5% are the lower and upper 95% CI for the permuted ANCA scores"),
-    p("- obs_val is the observed difference in ANCA score between the 2 groups"),
-    p("- fold_change is the observed difference in ANCA scores divided by the mean permuted difference in ANCA scores. Analogous to fold enrichment above baseline noise.")
-    
-    
+      A p-value is calculated by counting how many permuted scores are more extreme than
+      the observed score. The score (e.g. ANCA score) is selected by the user from the dropdown menu."),
+    p("The p-value is 1-sided, and tests the null hypothesis that there is no significant difference in scores
+      between a given pair of groups. P-values are adjusted for multiple comparisons using the Benjamini-Hochberg
+      method. There two possible interpretations of the resulting p-value:
+      not significantly different (p > 0.05, grey color) or significantly different (blue color).")
+
   )
 }
 
@@ -524,19 +548,21 @@ permPlotTbl <- function(input, output, session, input_df, nPerms) { #removed fil
   })
   
   
-  output$permTbl <- renderTable({
+  output$permTbl <- renderTable(expr = {
     perms() %>% #mutate(value = nPerms-value) %>% 
       rename("Group 1" = V1, "Group 2" = V2, "nperm_gr_thn_obs" = value)
-  })
+  }, digits = 3)
   
   output$permPlot <- renderPlot({
     colorBlue <- RColorBrewer::brewer.pal(n = 9, name = "Blues")
-    ggplot(perms(), aes(x=V1, y=V2, fill=pval_cut)) + 
+    ggplot(perms(), aes(x=V1, y=V2, fill=qval_cut)) + 
       geom_tile() + 
       scale_fill_manual(values = rev(colorBlue[c(1,3,5,7)]), drop=FALSE) +
       geom_tile(color = "white", size = 1) + 
-      geom_text(aes(label=round(pvalue, 3))) +
+      geom_text(aes(label=round(abs_diff, 2)), size=8) +
+      #labs(fill='|Obs. Diff|') +
       theme_classic() + theme(axis.ticks = element_blank(),
+                              text = element_text(size=20),
                               axis.line = element_blank(),
                               axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
                               axis.text.y = element_text(vjust=0.3, hjust = 1)) +
@@ -578,7 +604,7 @@ retPermPlotDfMulti2 <- function(input_df, fxn, nPerms, chrInCommon = FALSE){
   weighted_mean_dist_obs <- Reduce(`+`,Map(`*`, obs_dist, unlist(nrow_df))) / (sum(unlist(nrow_df)))
   print("weighted_mean_dist_obs")
   print(weighted_mean_dist_obs)
-  obs_dist2 <- as.vector(weighted_mean_dist_obs) %>% as_tibble() %>% rename(obs_val = value)
+  obs_dist2 <- as.vector(weighted_mean_dist_obs) %>% as_tibble() %>% rename(abs_diff = value)
   
   #now generate permuted distances
   weighted_mean_dist_perms_all <- lapply(1:nPerms, function(x){
@@ -609,13 +635,14 @@ retPermPlotDfMulti2 <- function(input_df, fxn, nPerms, chrInCommon = FALSE){
   categs <- as_tibble(t(combn(x = unique(input_df[[1]]$category), m = 2))) %>% #always correct order?
     bind_cols(shuf_dists_aneupl) %>%
     mutate(pvalue = sapply(value, pvalFxn2, nPerms),
-           pval_cut = cut(pvalue, 
+           qvalue = p.adjust(p = pvalue, method = "BH"),
+           qval_cut = cut(qvalue, 
                           breaks = c(0, 0.001, 0.01, 0.05, 1),
                           labels = brk_lbls))
   #print("categs:")
   #print(categs)
   categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
-    mutate(fold_change = obs_val / (perm_mean)) %>%
+    mutate(fold_change = abs_diff / (perm_mean)) %>%
     mutate(value = nPerms-value)
  # print("categs2")
  # print(categs2)
@@ -630,7 +657,7 @@ permPlotTblMultiInputUI <- function(id, header) {
   tagList(
     hr(),
     h3(header),
-    
+    h3("Do experimental groups differ in the degree of numerical chromosomal variation or aneuploidy?"),
     sliderInput(ns("Nperms"), "Number of permutations:",
                 min = 0, max = 5000, value = 500, step = 500
     ),
@@ -645,7 +672,40 @@ permPlotTblMultiInputUI <- function(id, header) {
     actionButton(ns("permute_action"), "Permute"),
     p("Please wait for a few minutes for the permutation..."),
     tableOutput(ns("permTbl")),
-    plotOutput(ns("permPlot"))
+    
+    fluidRow(column(3, tagList(
+      h3("Instructions (3 steps)"),
+      p("1. Select the # of desired permutations (default is 500). More perms will take longer."),
+      p("2. Select whether you would only like to use the chromosomes in common between the platforms (default is yes)."),
+      p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
+        the number of permutations.")
+      )), column(9, plotOutput(ns("permPlot")))),
+    
+    h3("Interpretation of table columns"),
+    tags$ul(
+      tags$li("Group 1 and Group 2 are the groups that are being compared"),
+      tags$li("nperm_gr_thn_obs is the number of permutations greater than the observed score"),
+      tags$li("pvalue is the p-value rounded to 2 decimal places"),
+      tags$li("qvalue is the Benjamini-Hochberg adjusted p-value, and qval_cut is the categorization of the q-value into bins (for heatmap purposes)"),
+      tags$li("perm_mean is the mean of the anca scores across all permuted samples"),	
+      tags$li("perm_dist_2.5% and perm_dist_97.5% are the lower and upper 95% CI for the permuted scores"),
+      tags$li("abs_diff is the absolute value of the observed difference in score between the 2 groups"),
+      tags$li("fold_change is the abs_diff in scores divided by the mean permuted difference in scores. Analogous to fold enrichment above baseline noise.")
+    ),
+    h3("Interpretation of heatmap"),
+    p("The heatmap shows the absolute value of the difference between each possible pair of treatment groups.
+      This is the value shown within each cell.
+      The grid is colored by the q-value, which tests whether the observed value is no greater than chance."),
+    
+    h3("Methods"),
+    p("Generate random permutations of the category associated with each observed cell. 
+      The difference in scores between all possible pairs of categories is calculated after each permutation. 
+      A p-value is calculated by counting how many permuted scores are more extreme than
+      the observed score. The score (e.g. ANCA score) is selected by the user from the dropdown menu."),
+    p("The p-values is 1-sided, and tests the null hypothesis that there is no significant difference in scores
+      between a given pair of groups. P-values are adjusted for multiple comparisons using the Benjamini-Hochberg
+      method. There two possible interpretations of the resulting p-value:
+      not significantly different (p > 0.05, grey color) or significantly different (blue color).")
   )
 }
 
@@ -674,19 +734,21 @@ permPlotTblMultiInput <- function(input, output, session, nPerms, sky_df, fish_d
     return(perm_df)
   })
   
-  output$permTbl <- renderTable({
+  output$permTbl <- renderTable(expr = {
     perms() %>% #mutate(value = nPerms-value) %>% 
       rename("Group 1" = V1, "Group 2" = V2, "nperm_gr_thn_obs" = value)
-  })
+  }, digits = 3)
   
   output$permPlot <- renderPlot({
     colorBlue <- RColorBrewer::brewer.pal(n = 9, name = "Blues")
-    ggplot(perms(), aes(x=V1, y=V2, fill=pval_cut)) + 
+    ggplot(perms(), aes(x=V1, y=V2, fill=qval_cut)) + 
       geom_tile() + 
       scale_fill_manual(values = rev(colorBlue[c(1,3,5,7)]), drop=FALSE) +
       geom_tile(color = "white", size = 1) + 
-      geom_text(aes(label=round(pvalue, 3))) +
+      geom_text(aes(label=round(abs_diff, 2)), size=8) +
+      #labs(fill='Abs. Diff|') +
       theme_classic() + theme(axis.ticks = element_blank(),
+                              text = element_text(size=20),
                               axis.line = element_blank(),
                               axis.text.x = element_text(angle = 90, hjust = 1, vjust = 0.4),
                               axis.text.y = element_text(vjust=0.3, hjust = 1)) +
