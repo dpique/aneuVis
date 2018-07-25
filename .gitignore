@@ -17,4 +17,5 @@ video/**
 !app.R
 !report3.Rmd
 !www/*
-
+!scripts/helper_scripts.R
+README.md
