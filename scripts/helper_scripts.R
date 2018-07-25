@@ -1159,6 +1159,10 @@ two_to_four <- function(df){
  
 
 ####### new scripts as of 05-31-2018
+#fish_datapath <- list.files("testDat/data_in_app/", pattern = "^[A-Z]")
+
+#tbl_list <- lapply(here::here("testDat/data_in_app",fish_datapath), read_excel) #lapply(input$fish_files$datapath, read_excel)
+
 
 retFishDf <- function(fish_name, fish_datapath){
   path_list <- as.list(fish_name)#as.list(input$fish_files$name)
