@@ -8,3 +8,13 @@
 manuscript/**
 .httr-oauth
 video/**
+
+# Ignore everything
+*
+
+# But not these files...
+!.gitignore
+!app.R
+!report3.Rmd
+!www/*
+
