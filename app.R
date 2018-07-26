@@ -10,12 +10,9 @@ library(tidyverse)
 library(here)
 library(janitor)
 library(ggtern)
-#library(shinycustomloader)
 library(RColorBrewer)
-#require(openxlsx)
 library(Cairo)
-#library(Rtools)
-#library(DT)
+
 source("scripts/helper_scripts.R")
 
 max_plots <- 50 # *maximum* total number of plots
@@ -693,8 +690,8 @@ server <- shinyServer(function(input, output, session) {
       # Copy the report file to a temporary directory before processing it, in
       # case we don't have write permissions to the current working dir (which
       # can happen when deployed).
-      tempReport <- file.path(tempdir(), "scripts/report3.Rmd")
-      file.copy("scripts/report3.Rmd", tempReport, overwrite = TRUE)
+      tempReport <- file.path(tempdir(), "report3.Rmd")
+      file.copy("report3.Rmd", tempReport, overwrite = TRUE)
       
       # Set up parameters to pass to Rmd document
       params <- list(fish_files = input$fish_files, 
