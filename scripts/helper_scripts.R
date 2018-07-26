@@ -630,7 +630,7 @@ retPermPlotDfMulti2 <- function(input_df, fxn, nPerms, chrInCommon = FALSE){
     t() %>% 
     as_tibble() %>%
     rename_all(.funs = ~paste0("perm_dist_", .))
-  
+   
   brk_lbls <- c("<0.001", "<0.01", "<0.05", ">0.05") 
   categs <- as_tibble(t(combn(x = unique(input_df[[1]]$category), m = 2))) %>% #always correct order?
     bind_cols(shuf_dists_aneupl) %>%
