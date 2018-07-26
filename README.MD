@@ -4,6 +4,8 @@
 
 **aneuvis** is a web-based tool to automatically analyze numerical chromosomal variation in single cells.
 
+A video tutorial is available at the link below: [![video](https://img.youtube.com/vi/SWwBYFNb2PA/0.jpg)](https://www.youtube.com/watch?v=SWwBYFNb2PA)
+
 ![img1](www/aneuvis_layout.png)
 
 ## Usage
