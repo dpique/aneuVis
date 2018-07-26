@@ -15,7 +15,7 @@ aneuvis is available to use at [dpique.shinyapps.io/aneuvis/](https://dpique.shi
 To run aneuvis locally, first clone this repo to your computer:
 
 ```
-git clone https://github.com/dpique/aneuVis.git
+git clone https://github.com/dpique/aneuvis.git
 ```
 
 Then, change directories into the `aneuVis` directory:
@@ -30,4 +30,4 @@ Lastly, load the app. Ensure that Shiny and the required libraries are installed
 R -e "shiny::runApp('app.R')"
 ```
 
-Aneuvis was built using R version 3.4.3 and shiny version 1.0.5 and is freely available under a GPLv3 license.
+aneuvis was built using R version 3.4.3 and shiny version 1.0.5 and is freely available under a GPLv3 license.
