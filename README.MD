@@ -1,5 +1,3 @@
-## aneuvis
-
 ## Overview
 
 **aneuvis** is a web-based tool to automatically analyze numerical chromosomal variation in single cells.
