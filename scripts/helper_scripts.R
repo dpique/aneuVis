@@ -10,43 +10,13 @@ classifPloidy = function(x){
   return("aneuploid")
 }
 
-return_chr_prop_matr <- function(chromosomes, ltr, maxPair){
-  
-  #maxPair = maxChrPlus1
-  #chromosomes = f1R.t %>% select(1:3, 6)#f1R.t2
-  #ltr = classes[1]
-  all_perms = as.data.frame(gtools::permutations(maxPair, 2, repeats.allowed = T)) %>%
-    mutate(chrPaste=paste0(V1, V2))
-  #chromosomes <- aneuDat_test %>% rename(clss=class)
-  #ltr <- "test_aneupl_file_2.xlsx"
-  chromosomes2 <- chromosomes %>%
-    filter(clss == ltr) %>%
-    mutate_at(2:3, .funs = ~ifelse(. > maxPair, maxPair, .)) %>%
-    group_by_(colnames(.)[2], colnames(.)[3]) %>%
-    count() %>%
-    ungroup() %>%
-    mutate(prop = n/sum(n), 
-           prop.r =  round(prop*100, 1)) %>%
-    unite(col = chrPaste, 1:2, sep = "",remove = FALSE) %>%
-    left_join(all_perms, ., by="chrPaste") %>%
-    mutate(prop.r.cl = ifelse(is.na(prop.r), "·", as.character(prop.r))) %>%
-    replace(is.na(.), 0)
-  return(chromosomes2)
-}
-
-
 return_chr_prop_matr2 <- function(chromosomes, ltr, maxPair){
-  
-  #maxPair = maxChrPlus1
-  #chromosomes = f1R.t %>% select(1:3, 6)#f1R.t2
-  #ltr = classes[1]
+
   temp_col_names <- colnames(chromosomes)
   colnames(chromosomes)[2:3] <- paste0("chr", temp_col_names[2:3])
   
   all_perms = as.data.frame(gtools::permutations(maxPair, 2, repeats.allowed = T)) %>%
     mutate(chrPaste=paste0(V1, V2))
-  #chromosomes <- aneuDat_test %>% rename(clss=class)
-  #ltr <- "test_aneupl_file_2.xlsx"
   chromosomes2 <- chromosomes %>%
     filter(category == ltr) %>%
     mutate_at(2:3, .funs = ~ifelse(. > maxPair, maxPair, .)) %>%
@@ -62,31 +32,6 @@ return_chr_prop_matr2 <- function(chromosomes, ltr, maxPair){
   return(chromosomes2)
 }
 
-
-
-
-create_perc_matr2 <- function(matr, title, minChr, maxChr, xlab, ylab){
-  tot= sum(matr$n)
-  gridSize <- maxChr - minChr + 1
-  x <- ggplot(matr, aes(x = V1, y = V2, fill = log(prop*100+1, 10))) + 
-    geom_tile(color = "black") +  
-    theme_classic() +
-    theme(axis.text=element_text(size=19, colour = "black"), 
-          axis.line = element_blank(), axis.ticks = element_blank(),
-          legend.position="none") +
-    scale_fill_gradient(low = "white", high = "firebrick3", limits = c(0,2)) + 
-    geom_text(size = 4.5, aes(label = prop.r.cl)) + 
-    coord_fixed() +
-    xlab(xlab) + 
-    ylab(ylab) + 
-    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
-    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
-    ggtitle(paste0("% aneuploidy across ", tot, " observations\nfile: ", title))
-  #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
-  return(x)
-}
-
-
 create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
   tot <- sum(matr$n)
   gridSize <- maxChr - minChr + 1
@@ -97,7 +42,6 @@ create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
                                  face = c("plain", "bold", rep("plain", 7))), 
           axis.line = element_blank(), axis.ticks = element_blank(),
           legend.text=element_text(size=12)) +
-          #legend.position="none") +
     scale_fill_gradient(low = "white", high = "firebrick3", limits = c(0,log(100+1, base = 10)),
                         breaks = c(0,log(c(11, 101), base = 10)),#1,log(100+1, base = 10)),
                         labels = c(0, 10, 100),
@@ -109,29 +53,6 @@ create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
     scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
     scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
     ggtitle(paste0("% aneuploidy across ", tot, " observations\nfile: ", title))
-  #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
-  return(x)
-}
-
-
- 
-create_perc_matr3 <- function(matr, title, minChr, maxChr, xlab, ylab){
-  tot= sum(matr$n)
-  gridSize <- maxChr - minChr + 1
-  x <- ggplot(matr, aes(x = V1, y = V2, fill = log(prop*100+1, 10))) + 
-    geom_tile(color = "black") +  
-    theme_classic() +
-    theme(axis.text=element_text(size=19, colour = "black"), 
-          axis.line = element_blank(), axis.ticks = element_blank()) +
-    scale_fill_gradient(low = "white", high = "firebrick3", limits = c(0,2)) + 
-    geom_text(size = 4.5, aes(label = prop.r.cl)) + 
-    coord_fixed() +
-    xlab(xlab) + 
-    ylab(ylab) + 
-    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
-    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
-    facet_grid(src~.) + 
-    ggtitle(paste0("% Aneuploidy Across ", tot, " ", title, "Observations"))
   #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
   return(x)
 }
@@ -249,7 +170,6 @@ calc_aneupl_score <- function(chr_tbl, retChr = FALSE, numX=2, numY=1){
    # mutate(categ_file_type = paste0(category, "_",file_type))
 }
 
-
 calc_anca_score_normalized <-  function(chr_tbl, retChr = FALSE, numX=2, numY=1) {
   if(retChr){
     anca_tbl <- chr_tbl %>% 
@@ -330,29 +250,7 @@ calc_perc_ploidy <-  function(chr_tbl, numX, numY) {
     spread(ploidy, freq)
 }
 
-calc_perc_ploidy_old <-  function(chr_tbl) {
-  cat_file_type <- chr_tbl %>% 
-    select(category, file_type) %>% 
-    distinct()
-  
-  chr_tbl %>%
-    spread(chr, num_chr) %>% 
-    mutate(ploidy =  apply(.[,4:ncol(.)], 1, classifPloidy)) %>% 
-    select(category, ploidy, file_type) %>% 
-    mutate(ploidy = factor(ploidy, levels=c("diploid", "polyploid", "aneuploid"))) %>%
-    group_by(category, ploidy) %>% 
-    summarize(n=n()) %>% 
-    mutate(freq=n/sum(n)) %>%
-    tidyr::complete(ploidy, fill = list(n = 0, freq=0))%>%
-    left_join(cat_file_type, by="category") %>%
-    select(-n) %>%
-    spread(ploidy, freq)
-}
-
-
-
 calc_instab_idx <-  function(chr_tbl) {
-  
   cat_file_type <- chr_tbl %>% 
     select(category, file_type) %>% 
     distinct()
@@ -374,17 +272,13 @@ calc_instab_idx <-  function(chr_tbl) {
     left_join(cat_file_type, by="category")
  }
 
-
-
 ##########
 #functions for permutation
 pvalFxn <- function(val, nPerm){
   if(val > nPerm/2){
-    #pval = 2 * (nPerm - val + 1)/ nPerm
     pval = 2 * (nPerm - val)/ nPerm + 1/nPerm
     return(pval)
   } else if(val < nPerm/2){
-    #pval = (2 * (val + 1)) / nPerm
     pval = (2*val) / nPerm + 1/nPerm
     return(pval)
   } else{
@@ -403,11 +297,9 @@ pvalFxn2 <- function(val, nPerm){
 
 
 retPermPlotDf <- function(input_df, fxn, nPerms){
-  #test <- input_df %>% fxn
   input_df <- input_df %>% arrange(category)
   input_df_wide <- input_df %>% spread(chr, num_chr)
   obs_dist <- shufRetDist(input_df_wide, fxn, perm=FALSE)
-  #obs_dist_log <- log(obs_dist+1, 2)
   shuf_dists <- lapply(1:nPerms, function(x) shufRetDist(input_df_wide, fxn))
     
   shuf_dists_aneupl <- shuf_dists %>% 
@@ -439,13 +331,9 @@ retPermPlotDf <- function(input_df, fxn, nPerms){
    return(categs2)
 }
 
-
-
-
-
 shufRetDist <- function(matr_wide, fxn, perm = TRUE){
   if(perm == TRUE){
-    matr2 <- matr_wide %>% #matr_wide %>% # matr5 %>% 
+    matr2 <- matr_wide %>%
       mutate(category = sample(category)) %>%
       gather("chr", "num_chr", 4:ncol(.))
     matr3 <- matr2 %>% fxn
@@ -461,11 +349,8 @@ shufRetDist <- function(matr_wide, fxn, perm = TRUE){
 
 ######## shiny modules 2018-05-12 #####
 
-#permPlotTbl
-
 permPlotTblUI <- function(id, header) {
   ns <- NS(id)
-  
   tagList(
     hr(),
     h3(header),
@@ -485,25 +370,12 @@ permPlotTblUI <- function(id, header) {
     
     fluidRow(column(3, tagList(
       h3("Instructions (3 steps)"),
-      #p("How to use this page:"),
       p(paste0("1. Select the tab of the data type you would like to permute. This tab is for permutation of the ", 
                header, " data.")),
       p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
       p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
         the number of permutations.")
     )), column(9, plotOutput(ns("permPlot")))),
-#)
-    
-    #plotOutput(ns("permPlot")),
-    
-    
-    #h3("Instructions (3 steps)"),
-    ##p("How to use this page:"),
-    #p(paste0("1. Select the tab of the data type you would like to permute. This tab is for permutation of the ", 
-    #         header, " data.")),
-    #p("2. Select the # of desired permutations (default is 500). More perms will take longer."),
-    #p("3. Select the score to permute, then hit 'permute'. This may take a few minutes depending on 
-    #  the number of permutations."),
     h3("Interpretation of table columns"),
     tags$ul(
       tags$li("Group 1 and Group 2 are the groups that are being compared"),
@@ -529,18 +401,11 @@ permPlotTblUI <- function(id, header) {
       between a given pair of groups. P-values are adjusted for multiple comparisons using the Benjamini-Hochberg
       method. There two possible interpretations of the resulting p-value:
       not significantly different (p > 0.05, grey color) or significantly different (blue color).")
-
   )
 }
 
 
 permPlotTbl <- function(input, output, session, input_df, nPerms) { #removed file_input 2018-06-01
-  #add file_type for validate
-  # Yields the data frame with an additional column "selected_"
-  # that indicates whether that observation is brushed
-  #input_df2 <- reactive({
-  #  input_df
-  #})
   perms <- eventReactive(input$permute_action, {
     perm_df = retPermPlotDf(input_df = input_df(), 
                             fxn = match.fun(input$fxn_to_perm), nPerms = input$Nperms)
@@ -549,7 +414,7 @@ permPlotTbl <- function(input, output, session, input_df, nPerms) { #removed fil
   
   
   output$permTbl <- renderTable(expr = {
-    perms() %>% #mutate(value = nPerms-value) %>% 
+    perms() %>%
       rename("Group 1" = V1, "Group 2" = V2, "nperm_gr_thn_obs" = value)
   }, digits = 3)
   
@@ -639,13 +504,9 @@ retPermPlotDfMulti2 <- function(input_df, fxn, nPerms, chrInCommon = FALSE){
            qval_cut = cut(qvalue, 
                           breaks = c(0, 0.001, 0.01, 0.05, 1),
                           labels = brk_lbls))
-  #print("categs:")
-  #print(categs)
   categs2 <- bind_cols(categs, shuf_dists_mean2, shuf_dists_ci, obs_dist2) %>% 
     mutate(fold_change = abs_diff / (perm_mean)) %>%
     mutate(value = nPerms-value)
- # print("categs2")
- # print(categs2)
   return(categs2)
 }
 
@@ -716,10 +577,11 @@ permPlotTblMultiInput <- function(input, output, session, nPerms, sky_df, fish_d
   # that indicates whether that observation is brushed
 
   input_df <- reactive({
-    s <- sky_df() #%>% arrange(category), NA) ifelse(!is.null(fish_df()), 
-    f <- fish_df() #%>% arrange(category), NA) #fish_df() %>% arrange(category)
-    w <- wgs_df() #ifelse(!is.null(wgs_df()), %>% arrange(category), NA) #wgs_df() %>% arrange(category)
-    sfw_list <- list(f,s,w) %>% purrr::compact() %>% #remove empty elements
+    s <- sky_df() 
+    f <- fish_df()
+    w <- wgs_df() 
+    sfw_list <- list(f,s,w) %>% 
+      purrr::compact() %>% #remove empty elements
       map(.f = ~arrange(.x, category))
     return(sfw_list)
   })
@@ -735,7 +597,7 @@ permPlotTblMultiInput <- function(input, output, session, nPerms, sky_df, fish_d
   })
   
   output$permTbl <- renderTable(expr = {
-    perms() %>% #mutate(value = nPerms-value) %>% 
+    perms() %>% 
       rename("Group 1" = V1, "Group 2" = V2, "nperm_gr_thn_obs" = value)
   }, digits = 3)
   
@@ -771,14 +633,7 @@ platformConcordanceUI <- function(id) {
   tagList(
     hr(),
     checkboxInput(ns("chrInCommonPC"), label = "Use Chromosomes in Common", value = TRUE, width = NULL),
-    #p("Concordance between FISH and sc-WGS"),
-   h3("Concordance between experimental platforms"),
-    #p("The concordance between experimental platforms is listed below." A minimum of 2 or more experimental platforms, 
-   #   each with 2 or more treatments, are required to calculate the concordance."), 
-   #   #The support of the concordance statistic is [0-1], where 1 indicates maximal concordance."),
-   # p("The concordance statistic (CS) is calculated between two experimental platforms. It can be described as the proportion of times that a given statistic 
-  #    changes in the same direction between all possible pairwise combinations of treatments between two different experimental platforms. 
-   #   All statistics listed as columns in the heatmap below are included in the calculation of the CS."),
+    h3("Concordance between experimental platforms"),
     h4("Rationale"),
     p("The direction of change in the degree of aneuploidy between two treatment groups should be the same regardless of the experimental 
     platform used (e.g. FISH, SKY, or sc-WGS). In order to test the concordance of results between experimental platforms (e.g. FISH vs sc-WGS), 
@@ -797,37 +652,19 @@ platformConcordanceUI <- function(id) {
     tags$head(tags$style(css_style_conc_stat(ns("concStatSummaryFishScwgs")))),
     tags$head(tags$style(css_style_conc_stat(ns("concStatSummaryFishSky")))),
     tags$head(tags$style(css_style_conc_stat(ns("concStatSummaryScwgsSky")))),
-    
-    #paste0("#", ns("concStatSummaryFishScwgs"), "{color: red;
-    #                             font-size: 20px;
-    #       font-style: italic;
-    #  }"
-    #                     ))
-    #
-    #tags$head(tags$style(paste0("#", ns("concStatSummaryFishScwgs"), "{color: red;
-    #                             font-size: 20px;
-    #                             font-style: italic;
-    #                             }"
-    #                     ))
-    #),
   p("The heatmap below displays the difference in the statistic (columns) 
     between two treatments (rows) for a particular experimental platform (listed in parentheses)"),
-  
     plotOutput(ns("concPlot"), height="800px")
-  #plotOutput(ns("chrHeatS2"), height = "800px")
-  
   )
 }
 
 platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df, numbX, numbY) {
   
-  stsTbl2 <- reactive({ #eventReactive({input$submit_fish | input$submit_sky | input$reset_sky | input$reset_fish |
-      #input$reset_wgs | input$submit_wgs |  as.numeric(input$numberOfX) | as.numeric(input$numberOfY) | 
-      #input$chrInCommonPC}, {
+  stsTbl2 <- reactive({ 
         
-        s <- sky_df() #%>% arrange(category), NA) ifelse(!is.null(fish_df()), 
-        f <- fish_df() #%>% arrange(category), NA) #fish_df() %>% arrange(category)
-        w <- wgs_df() #ifelse(!is.null(wgs_df()), %>% arrange(category), NA) #wgs_df() %>% arrange(category)
+        s <- sky_df() 
+        f <- fish_df()
+        w <- wgs_df() 
         
         validate(
           need(!is.null(s) | !is.null(f) | !is.null(w), " ")# "Please upload at least 1 file!")
@@ -857,7 +694,7 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
         print(sumStats)
       })
 
-  #can we just do an odds ratio type testo
+  #can we just do an odds ratio type test
   
   concDf <- reactive({
     #stsTbl <- read_csv("~/Downloads/2018-06-12-aneuvis-stats-by-group.csv")
@@ -890,27 +727,12 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
     if(!all(c("fish", "sc-wgs") %in% unique(concDf()$.id))){
       return(NULL)#"Please upload both FISH and SC-WGS data")
     }
-    
-   # Nperms = 1e2
-   # tot_concord_rand_vect <- rep(0, Nperms)
-   # for(i in 1:Nperms){
-   #   sumry_tbl_compare_list.df.g2.rand <- sumry_tbl_compare_list.df.g %>%
-   #     select(-category_new, -.id2, -score) %>%
-   #     spread(key=.id, value = score_binary) %>%
-   #     mutate(fish = sample(fish), `sc-wgs` = sample(`sc-wgs`)) %>%
-   #     mutate(concordance = as.numeric({fish == `sc-wgs`})) 
-   #   tot_concord_rand <- sumry_tbl_compare_list.df.g2.rand %>% {sum(.$concordance)/nrow(.)}
-   #   tot_concord_rand_vect[i] <- tot_concord_rand
-   # }
-
      
     sumry_tbl_compare_list.df.g2 <- concDf() %>% #sumry_tbl_compare_list.df.g %>%#
       select(-category_new, -.id2, -score) %>%
       spread(key=.id, value = score_binary) %>%
       mutate(concordance = as.numeric({fish == `sc-wgs`}))
     tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
-    #return(paste0("Concordance between FISH and sc-WGS: ", round(tot_concord,3)))
-    #return(paste0(round(tot_concord,3)*100, "% of the statistics between FISH and sc-WGS data shown below change in the same direction between treatment groups."))
     return(paste0(round(tot_concord,3)*100, "% concordance between FISH and sc-WGS data."))
   })
   
@@ -923,11 +745,7 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
       spread(key=.id, value = score_binary) %>%
       mutate(concordance = as.numeric({fish == sky}))# collapse = ": "))##, .id=.id) #%>%
     tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
-    #return(paste0("Concordance between FISH and SKY: ", round(tot_concord,3)))
-    #return(paste0(round(tot_concord,3)*100, "% of the statistics between FISH and SKY data shown below change in the same direction between treatment groups."))
     return(paste0(round(tot_concord,3)*100, "% concordance between FISH and SKY data."))
-    
-    #return(tot_concord)
   })
   #
   output$concStatSummaryScwgsSky <- renderText({
@@ -937,17 +755,11 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
     sumry_tbl_compare_list.df.g2 <- concDf() %>%
       select(-category_new, -.id2, -score) %>%
       spread(key=.id, value = score_binary) %>%
-      mutate(concordance = as.numeric({sky == `sc-wgs`}))# collapse = ": "))##, .id=.id) #%>%
+      mutate(concordance = as.numeric({sky == `sc-wgs`}))
     tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
-    #return(paste0(round(tot_concord,3)*100, "% of the statistics between sc-WGS and SKY data shown below change in the same direction between treatment groups."))
     return(paste0(round(tot_concord,3)*100, "% concordance between sc-WGS and SKY data."))
-    
-    #return(paste0("Concordance between sc-WGS and SKY: ", round(tot_concord,3)))
-    
-    #return(tot_concord)
   })
-  #sum(sumry_tbl_compare_list.df.g2$concordance)/nrow(sumry_tbl_compare_list.df.g2)
-  
+
   output$concPlot <- renderPlot({
     
     ggplot(concDf(), aes(x=score_name, y= category_new, fill=score)) + 
@@ -1020,8 +832,6 @@ platformConcordance <- function(input, output, session, stsTbl) {
       mutate(concordance = as.numeric({fish == sky}))# collapse = ": "))##, .id=.id) #%>%
     tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
     return(paste0("Concordance between FISH and SKY: ", round(tot_concord,3)))
-    
-    #return(tot_concord)
   })
   #
   output$concStatSummaryScwgsSky <- renderText({
@@ -1035,10 +845,8 @@ platformConcordance <- function(input, output, session, stsTbl) {
     tot_concord <- sumry_tbl_compare_list.df.g2 %>% {sum(.$concordance)/nrow(.)}
     return(paste0("Concordance between sc-WGS and SKY: ", round(tot_concord,3)))
     
-    #return(tot_concord)
   })
-     #sum(sumry_tbl_compare_list.df.g2$concordance)/nrow(sumry_tbl_compare_list.df.g2)
-    
+
   output$concPlot <- renderPlot({
       
     ggplot(concDf(), aes(x=score_name, y= category_new, fill=score)) + 
@@ -1068,14 +876,9 @@ heatMapUI <- function(id) {
 
 heatMap <- function(input, output, session, input_df, file_type, orig_input){
   s4R <- reactive({
-    
-     #if (is.null(input_df())) { #2018-05-31
-      if (is.null(input_df)) {
-         
+    if (is.null(input_df)) {
       return(NULL)
     }
-    
-    #s2_to_s4 <- input_df() %>% 
     s2_to_s4 <- input_df %>% 
       spread(chr, num_chr) %>%
       group_by(category)  %>%
@@ -1100,11 +903,9 @@ heatMap <- function(input, output, session, input_df, file_type, orig_input){
   output$chrHeatS2 <- renderPlot({
     
     validate(
-      need(!is.null(orig_input()), " ") #paste0("Please upload at least 1 ", file_type, " file!"))
+      need(!is.null(orig_input()), " ")
     ) 
-    #print(head(s4R()))
-    
-    #if(is.null(g4R())
+
     s4.0 <- s4R() %>% 
       mutate(num_chr_filt = ifelse(num_chr > 9, 9, num_chr),
              num_chr_filt = factor(num_chr, levels = 0:9),
@@ -1121,19 +922,18 @@ heatMap <- function(input, output, session, input_df, file_type, orig_input){
     #2018-05-27
     s4.01 <- ggplot(s4.0, aes(x=chr, y=category, fill=num_chr_filt3)) + 
       geom_tile(color = "white", size = 1) + 
-      
       scale_fill_manual(values = colors,drop=FALSE,name = "Copy Number") +
-      theme_classic() + theme(axis.ticks = element_blank(),
-                              axis.line = element_blank(),
-                              axis.text.x = element_text(size=9),
-                              axis.text.y = element_text(hjust = 1)) + #vjust=0.3, 
-      xlab("Chromosome") + ylab("")+ 
+      theme_classic() + 
+      theme(axis.ticks = element_blank(),
+                         axis.line = element_blank(),
+                         axis.text.x = element_text(size=9),
+                         axis.text.y = element_text(hjust = 1)) +
+      xlab("Chromosome") + 
+      ylab("") + 
       scale_y_discrete(breaks=labels_s4$category,
                        labels=labels_s4$categ, position = "right") +
       coord_fixed(ratio = 1) 
     return(s4.01)
-  #}, #height = function() {
-    #session$clientData$output_scwgs_test-chrHeatS2_width
   })
 }
 
@@ -1157,20 +957,13 @@ two_to_four <- function(df){
     mutate(category = factor(category,levels=unique(category)))
 }
  
-
 ####### new scripts as of 05-31-2018
-#fish_datapath <- list.files("testDat/data_in_app/", pattern = "^[A-Z]")
-
-#tbl_list <- lapply(here::here("testDat/data_in_app",fish_datapath), read_excel) #lapply(input$fish_files$datapath, read_excel)
-
-
 retFishDf <- function(fish_name, fish_datapath){
-  path_list <- as.list(fish_name)#as.list(input$fish_files$name)
-  tbl_list <- lapply(fish_datapath, read_excel) #lapply(input$fish_files$datapath, read_excel)
+  path_list <- as.list(fish_name)
+  tbl_list <- lapply(fish_datapath, read_excel)
   
   f1 <- map2(.x = path_list, .y= tbl_list,
              .f = ~data.frame(category=.x, .y) %>% clean_names) %>% #) %>%
-    #rename_at(vars(names(.)), ~ unlist(regmatches(., gregexpr("Y|X|[[:digit:]]+", .))))) %>%
     do.call(rbind, .) %>% 
     as_tibble() %>% 
     clean_names() %>%

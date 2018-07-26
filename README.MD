@@ -18,7 +18,7 @@ To run aneuvis locally, first clone this repo to your computer:
 git clone https://github.com/dpique/aneuvis.git
 ```
 
-Then, change directories into the `aneuVis` directory:
+Then, change directories into the `aneuvis` directory:
 
 ```
 cd aneuvis/
