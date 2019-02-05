@@ -57,6 +57,53 @@ create_perc_matr2.1 <- function(matr, title, minChr, maxChr, xlab, ylab){
   return(x)
 }
 
+## Warning: Error in <Anonymous>: "plot.tag" is not a valid theme element name.
+## Stack trace (innermost first):
+##   107: <Anonymous>
+##   106: mapply
+## 105: <Anonymous>
+##   104: do.call
+## 103: update_theme
+## 102: add_ggplot
+## 101: +.gg
+## 100: create_perc_matr2.simple [scripts/helper_scripts.R#63]
+##                                99: renderPlot [/Users/dpique/Desktop/marLab/projects/aneuvis/app.R#588]
+##                                                89: <reactive:plotObj>
+##                                                  78: plotObj
+##                                                77: origRenderFunc
+##                                                76: output$plot3
+##                                                1: runApp
+                                              
+
+create_perc_matr2.simple <- function(matr, title, minChr, maxChr, xlab, ylab){
+  tot <- sum(matr$n)
+  gridSize <- maxChr - minChr + 1
+  x <- ggplot(matr, aes(x = V1, y = V2, fill = log(prop*100+1, 10))) + 
+    geom_tile(color = "black") + 
+    #theme_classic() + ## this seems to be the issue?
+    theme(axis.text=element_text(size=19, colour = "black", 
+                                 face = c("plain", "bold", rep("plain", 7))), 
+          axis.line = element_blank(), axis.ticks = element_blank(),
+          legend.text=element_text(size=12),
+          panel.grid.major = element_blank(), 
+          panel.grid.minor = element_blank(),
+          panel.background = element_blank()) +
+    scale_fill_gradient(low = "white", high = "firebrick3", limits = c(0,log(100+1, base = 10)),
+                        breaks = c(0,log(c(11, 101), base = 10)),#1,log(100+1, base = 10)),
+                        labels = c(0, 10, 100),
+                        name = "Percentage") + 
+    geom_text(size = 4.5, aes(label = prop.r.cl)) + 
+    coord_fixed() +
+    xlab(xlab) + 
+    ylab(ylab) + 
+    scale_x_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
+    scale_y_continuous(breaks=seq(minChr, maxChr, 1), labels=as.character(c(paste0("\u2264", minChr),{minChr+1}:{maxChr-1},paste0("\u2265", maxChr)))) + 
+    ggtitle(paste0("% aneuploidy across ", tot, " observations\nfile: ", title))
+  
+  #ggsave(filename = paste0(outDir, "/aneupl_", title, ".jpeg"), plot=x, device="jpeg", width = 6, height = 6, units = "in")
+  return(x)
+}
+
 
 # 3 will go all the way across the bottom.
 #

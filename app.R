@@ -72,7 +72,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                 tabPanel("Upload Data", icon=icon("upload"), value = "uploadTab",
                          tabsetPanel(
                            tabPanel("FISH",
-                                    h2("Under Construction (Feb 5 2019): the code used to produce FISH gridplot visualizations is being updated. Visualizations are currently not working as expected."),
+                                    #h2("Under Construction (Feb 5 2019): the code used to produce FISH gridplot visualizations is being updated. Visualizations are currently not working as expected."),
                                     h3("Upload fluorescence in situ hybridization (FISH) data"),
                                     p("Note: All FISH files to be compared must be uploaded together; otherwise, files will overwrite each other if uploaded 1 by 1."),
                                     p("FISH files containing between 2-4 chromosomes can be analyzed. Files with >4 chromosomes will be truncated to 4 chromosomes."),
@@ -199,6 +199,8 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     verbatimTextOutput("brush_info_aneuHeteroSctrPlt"),
                                     hr(),
                                     h3("Ternary Plot of Proportion of Diploid, Polyploid, and Aneuploid Cells by Group"),
+                                    h2("This visualization is currently under construction"),
+                                    
                                     plotOutput("ternPlot"),
                                     hr(),
                                     p("Ternary plots are used to represent proportions of 3 groups that sum to 1"),
@@ -400,20 +402,35 @@ server <- shinyServer(function(input, output, session) {
   
 
   ### Adding ternary plots
+  ### issue with ternary plots - 2019-02-05
+  
   output$ternPlot <- renderPlot({
-    p <- ggtern() + 
+    #p <- ggtern::ggtern() + 
+    #  geom_point(data=stsTbl(), 
+    #             aes(x = aneuploid,y=diploid,z=polyploid),
+    #             size = 3, alpha = 0.8)
+    p <- ggplot() + 
       geom_point(data=stsTbl(), 
-                 aes(x = aneuploid,y=diploid,z=polyploid,
-                     color = category, shape= file_type),
-                 size = 3, alpha = 0.8) + 
-      xlab("") + ylab("") +
-      Tlab("Diploid") +
-      Llab("Aneuploid") +
-      Rlab("Polyploid") +
-      guides(fill=guide_legend(title="Legend")) +
-      limit_tern(1.03,1.03,1.03) 
+                 aes(x = aneuploid,y=diploid),
+                 size = 3, alpha = 0.8)
+    
     print(p)
   })
+  
+  #output$ternPlot <- renderPlot({
+  #  p <- ggtern() + 
+  #    geom_point(data=stsTbl(), 
+  #               aes(x = aneuploid,y=diploid,z=polyploid,
+  #                   color = category, shape= file_type),
+  #               size = 3, alpha = 0.8) + 
+  #    xlab("") + ylab("") +
+  #    Tlab("Diploid") +
+  #    Llab("Aneuploid") +
+  #    Rlab("Polyploid") +
+  #    guides(fill=guide_legend(title="Legend")) +
+  #    limit_tern(1.03,1.03,1.03) 
+  #  print(p)
+  #})
   
   #### adding scatterplots for heterogeneity and aneuploidy scores
   output$aneuHeteroSctrPlt <- renderPlot({
@@ -577,10 +594,19 @@ server <- shinyServer(function(input, output, session) {
         f1R.t2 <- f4Plot() %>% select(c(1, chr_pairs[,all_combos_chr_pairs_and_classes()[my_i,1]]+1), ncol(.))
         matr_plot <- return_chr_prop_matr2(f1R.t2,classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
                                            maxPair = maxChrPlus1)
+        print(matr_plot)
         x_y_axis_lab <- colnames(matr_plot)[4:5]
-        plt <- create_perc_matr2.1(matr_plot, title = classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
+        print(x_y_axis_lab)
+        
+        #2019-02-05
+        #plt <- create_perc_matr2.1(matr_plot, title = classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
+        #                           minChr = 1, 
+        #                           maxChr = maxChrPlus1, xlab = x_y_axis_lab[1], ylab=x_y_axis_lab[2])
+        plt <- create_perc_matr2.simple(matr_plot, title = classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
                                    minChr = 1, 
                                    maxChr = maxChrPlus1, xlab = x_y_axis_lab[1], ylab=x_y_axis_lab[2])
+        
+        #create_perc_matr2.simple
         return(plt)
       })
     })
