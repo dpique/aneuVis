@@ -74,10 +74,12 @@ ui <- tagList(shinyjs::useShinyjs(),
                            tabPanel("FISH",
                                     h3("Upload fluorescence in situ hybridization (FISH) data"),
                                     p("Note: All FISH files to be compared must be uploaded together; otherwise, files will overwrite each other if uploaded 1 by 1."),
+                                    p("FISH files containing between 2-4 chromosomes can be analyzed. Files with >4 chromosomes will be truncated to 4 chromosomes."),
                                     fileInput(
                                       'fish_files', 
                                       span(".xlsx or .xls",
                                            tags$a(
+                                             target = "_blank", 
                                              "(example data)",
                                              href = "https://docs.google.com/uc?export=download&id=1ZO9jWicY-5WohvGbQi_WrQWcDaram5wZ"
                                            )
@@ -104,6 +106,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       inputId = "wgs_file",
                                       label = span("Copy Number File (.txt)",
                                            tags$a(
+                                             target = "_blank", 
                                              "(example data)",
                                              href = "https://docs.google.com/uc?export=download&id=1VW35NIXSCu7OKaFTSFF_LacwjBqM9JWo"
                                            )
@@ -114,6 +117,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       inputId = "wgs_key",
                                       label = span("Sample Key (.xls or .xlsx)",
                                                    tags$a(
+                                                     target = "_blank", 
                                                      "(example key)",
                                                      href = "https://docs.google.com/uc?export=download&id=1Yon70xRNv693qSjANrADW1WHSHkZ-2Xj"
                                                    )
