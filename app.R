@@ -14,7 +14,7 @@ max_plots <- 75 # *maximum* total number of gridplots
 ui <- tagList(shinyjs::useShinyjs(), 
               withMathJax(), 
               navbarPage(
-                title = "aneuvis 1.0",
+                title = "aneuvis 1.0 (Currently Under Construction!)",
                 
                 theme = shinythemes::shinytheme("spacelab"),
                 id = "inTabset",
@@ -44,8 +44,8 @@ ui <- tagList(shinyjs::useShinyjs(),
                                   href = "http://www.einstein.yu.edu/faculty/9868/cristina-montagna/", 
                                   "Montagna"), "(aneuploidy and cytogenetics) and", 
                            tags$a(target = "_blank", 
-                                  href = "http://www.einstein.yu.edu/faculty/12990/jessica-mar/", 
-                                  "Mar"), "(computational biology) labs at Albert Einstein College of Medicine."),
+                                  href = "https://aibn.uq.edu.au/profile/3649/jessica-mar", 
+                                  "Mar"), "(computational biology) labs at Albert Einstein College of Medicine and University of Queensland, respectively."),
                          p("All source code is available on", tags$a(target = "_blank", 
                                                                      href = "https://github.com/dpique/aneuvis", "Github")),
                          p("Aneuvis was created using", tags$a(target = "_blank", 
@@ -72,6 +72,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                 tabPanel("Upload Data", icon=icon("upload"), value = "uploadTab",
                          tabsetPanel(
                            tabPanel("FISH",
+                                    h2("Under Construction (Feb 5 2019): the code used to produce FISH gridplot visualizations is being updated. Visualizations are currently not working as expected."),
                                     h3("Upload fluorescence in situ hybridization (FISH) data"),
                                     p("Note: All FISH files to be compared must be uploaded together; otherwise, files will overwrite each other if uploaded 1 by 1."),
                                     p("FISH files containing between 2-4 chromosomes can be analyzed. Files with >4 chromosomes will be truncated to 4 chromosomes."),
@@ -144,6 +145,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       inputId = "sky_file",
                                       label = span("Upload SKY File (.xls, .xlsx)",
                                                    tags$a(
+                                                     target = "_blank",
                                                      "(example data)",
                                                      href = "https://docs.google.com/uc?export=download&id=1hUP9yCWbDeh6Yf2IpR5LtaFs4iFK86tp"
                                                    )
