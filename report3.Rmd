@@ -30,21 +30,21 @@ knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, dev='CairoPDF')
 ```
 
 
-# Scores by Group
+# Ternary Plot - Scores by Group
 
 ```{r}
-#p <- ggtern() + 
-#  geom_point(data=params$stsTbl, 
-#             aes(x = aneuploid,y=diploid,z=polyploid,
-#                 color = category, shape = file_type),
-#             size = 3, alpha = 0.8) +
-#  xlab("") + ylab("") +
-#  Tlab("Diploid") +
-#  Llab("   Aneuploid") +
-#  Rlab("Polyploid   ") +
-#  guides(fill=guide_legend(title="Legend")) +
-#  limit_tern(1.03,1.03,1.03) + 
-#  theme(text=element_text(size=9))
+p <- ggtern() + 
+  geom_point(data=params$stsTbl, 
+             aes(x = aneuploid,y=diploid,z=polyploid,
+                 color = category, shape = file_type),
+             size = 3, alpha = 0.8) +
+  xlab("") + ylab("") +
+  Tlab("Diploid") +
+  Llab("   Aneuploid") +
+  Rlab("Polyploid   ") +
+  guides(fill=guide_legend(title="Legend")) +
+  limit_tern(1.03,1.03,1.03) + 
+  theme(text=element_text(size=9))
 #
 #
 #p <- ggtern() + 
@@ -60,7 +60,7 @@ knitr::opts_chunk$set(echo=FALSE, warning=FALSE, message=FALSE, dev='CairoPDF')
 #  limit_tern(1.03,1.03,1.03) + 
 #  theme(text=element_text(size=9))
 #
-#print(p)
+print(p)
 ```
 
 

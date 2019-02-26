@@ -1025,6 +1025,28 @@ retFishDf <- function(fish_name, fish_datapath){
   return(f1)
 }
 
+retFishDf_head <- function(fish_name, fish_datapath){
+  path_list <- as.list(fish_name)
+  tbl_list <- lapply(fish_datapath, read_excel)
+  #do all the columns have the same name?
+  
+  tbl_list_colnames <- lapply(tbl_list, colnames)
+  print("tbl_list_colnames")
+  print(tbl_list_colnames)
+  
+  allSame <- function(x) length(unique(x)) == 1
+  print("allSame(tbl_list_colnames)")
+  print(allSame(tbl_list_colnames))
+  if(allSame(tbl_list_colnames) == TRUE | is.null(tbl_list_colnames)){
+    return("")
+  } else {
+    return("Check that the column names are identical between files!")
+  }
+
+}
+
+
+
 retSkyDf <- function(sky_datapath){
   s1 <- read_excel(sky_datapath) %>% 
     clean_names() %>%
@@ -1065,7 +1087,7 @@ retWgsDf <- function(wgs_datapath, wgs_key_datapath){
     as_tibble() %>% 
     .[,colSums(!is.na(.)) > 0] %>%
     select(-category)
-  print(g)
+  #print(g)
   gK <- read_excel(path = wgs_key_datapath[1], sheet = 1) #%>%
   
   g2 <- g %>% 
@@ -1081,6 +1103,56 @@ retWgsDf <- function(wgs_datapath, wgs_key_datapath){
     .[ , order(names(.))]
   return(g2)
 }
+
+retWgsDf_head <- function(wgs_key_datapath){
+ # wgs_key_datapath = "~/Downloads/sc_wgs_key_test.xlsx"
+  if(length(wgs_key_datapath) == 0){
+    df <- ""
+  } else {
+    df <- read_excel(path = wgs_key_datapath[1], sheet = 1)
+  }
+  #df <- ifelse(length(wgs_key_datapath) == 0, "", 
+  #       read_excel(path = wgs_key_datapath, sheet = 1))
+  print("retWgsDf_head:")
+  print(df)
+  return(df)
+  #gK <- read_excel(path = wgs_key_datapath[1], sheet = 1) #%>%
+ 
+  #return(gK)
+}
+
+
+retWgsDf2 <- function(wgs_datapath, wgs_key_datapath){
+  path_list <- as.list(wgs_datapath)
+  #fileinput: 'name', 'size', 'type' and 'datapath'.
+  tbl_list <- lapply(path_list, read_delim, delim="\t")
+  
+  g <- map2(.x = path_list, .y= tbl_list,
+            .f = ~data.frame(category=.x, .y)) %>% 
+    do.call(rbind, .) %>% 
+    as_tibble() %>% 
+    .[,colSums(!is.na(.)) > 0] %>%
+    select(-category)
+  #print(g)
+  gK <- read_excel(path = wgs_key_datapath[1], sheet = 1) #%>%
+  return(list(g=g,gK=gK))
+}
+
+retWgsDf3 <- function(g, gK){
+  g2 <- try(expr = g %>% 
+    gather(key = smpl, value=cp_nm, 4:ncol(.)) %>% 
+    group_by(CHR, smpl) %>% 
+    mutate(bin_size = END - START) %>%
+    summarise(num_chr = round(weighted.mean(x = cp_nm, w = bin_size))) %>% 
+    separate(CHR, c("chrRm", "chr"), sep=3) %>% 
+    dplyr::select(-chrRm) %>% 
+    mutate(chr = factor(chr, levels=c(1:22, "X", "Y")))%>% 
+    left_join(gK, by=c("smpl" = "smpl_id")) %>%
+    mutate(file_type = "sc-wgs") %>%
+    .[ , order(names(.))], "Test")
+  return(g2)
+}
+
 
 
 addStatSummary <- function(){

@@ -52,16 +52,30 @@ ui <- tagList(shinyjs::useShinyjs(),
                                                                href = "http://shiny.rstudio.com/", 
                                                                "Shiny"), "version 1.0.5 (R version 3.4.3) and is available under a GPLv3 license"),
                          p("Please contact daniel.pique@med.einstein.yu.edu with any questions."),
+                         p("Last Updated:", format(Sys.Date(), "%B %d, %Y")),
                          hr(),
                          h3("FAQ"),
                          tags$ol(
+                           tags$li(tags$b("Can I upload multiple files at once (e.g. both test and control data)?")),
+                           tags$ul("Yes. First, ensure that all files to be uploaded are in the same folder on your computer. 
+                                      Then, under the \"Upload Data\" tab, click \"Browse...\". Using your computer's file system navigator (e.g. Finder for Mac or Explorer for Windows), select all the desired files using \"Command + Click\"  selecting multiple files using \"Ctrl + click\" (on PC) or \"command + click \" (on Mac)."),
                            tags$li(tags$b("I am trying to upload multiple FISH files in excel and I get an error. What should I do?")),
-                           tags$ul("Try checking the column names in the excel files to make sure they are the same between all files."),
+                           tags$ul("Check the column names in the excel files to make sure they are the same between all files."),
                            tags$li(tags$b("When uploading Excel files, I get a message that says 'server disconnected - Reload'.")),
                            tags$ul("Ensure that the each Excel file only has a single tab. Excel files with multiple tabs/sheets may not be processed correctly by Aneuvis."),
                            tags$li(tags$b("I am trying to upload an excel file and I get an error that looks like this:")), 
                            img(src="error_1.png", width=200),
                            tags$ul("This could be an issue with the file encoding. Try opening the file and saving it (using 'Save As...') with the same file name (without modifying the file). Then, try re-uploading the file into aneuvis."),
+                           
+                           tags$li(tags$b("I see a message that says 'disconnect from the server'. Why is this?")),
+                           tags$ul("There could be two reasons for this."),
+                           tags$ul("1. You may have been disconnected. Aneuvis sessions that are idle for longer than 1 hour are automatically disconnected, which helps us lower the total cost of running aneuvis. If you need to intermittently return to aneuvis, we suggest downloading and using the desktop version of aneuvis, which runs on your local computer and will not time-out."),
+                           tags$ul("2. There is a browser-specific issue. Aneuvis has been tested and works on Chrome, Safari, and Firefox. Please use one of these three browsers for the most consistent results."),
+                           
+                           tags$li(tags$b("I see a message that says \"An error has occurred. Check your logs or contact the app author for clarification.\" after uploading my FISH data. What should I do?")),
+                           tags$ul("There may be an issue with the layout of the uploaded Excel file(s). Try downloading the example FISH data (several Excel files). 
+                                   You can directly modify these example Excel files, pasting in your own data into these files. Then, upload these data files to Aneuvis."),
+
                            tags$li(tags$b("I have an idea to improve aneuvis. How should I share this?")),
                            tags$ul("Email me (daniel.pique@med.einstein.yu.edu) with any suggestions. You can also open an issue on Github or submit a pull request.")
                          ),
@@ -91,7 +105,8 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     actionButton("submit_fish", "Submit and Go to Table Summary"),
                                     actionButton('reset_fish', 'Reset Input'),
                                     #Resetting input: https://gist.github.com/bborgesr/07406b30ade8a011e59971835bf6c6f7
-                                    textOutput("fish_summary"),
+                                    #textOutput("fish_summary"),
+                                    textOutput("txt_warn_fish"),
                                     hr(),
                                     h3("FISH file structure guide"),
                                     img(src="fish_layout_excel.png", width=300),
@@ -128,6 +143,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     ),
                                     actionButton("submit_wgs", "Submit and Go to Table Summary"),
                                     actionButton('reset_wgs', 'Reset Input'),
+                                    textOutput(outputId = "txt_warn"),
                                     hr(),
                                     h3("Copy number and key file structure guide"),
                                     img(src="ginkgo_layout.png", width=500),
@@ -251,11 +267,24 @@ ui <- tagList(shinyjs::useShinyjs(),
 server <- shinyServer(function(input, output, session) {
   ###########
   #1. Read in raw data
-  rv <- reactiveValues(f1 = NULL, s1=NULL, w1=NULL)
+  rv <- reactiveValues(f1 = NULL, s1=NULL, w1=NULL, df_key=NULL, df_fish=NULL)
   
-  observe({
+  observeEvent(input$submit_fish,{
     req(input$fish_files)
     rv$f1 <- retFishDf(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+  })
+  
+  output$txt_warn_fish <- renderText({
+    
+    rv$df_fish <- retFishDf_head(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+    #return(rv$df_fish)
+    #do all the columns have the same name?
+    if(is.null(colnames(rv$df_key))){
+      return("")
+    } else {
+      return(rv$df_fish)
+    }
+ 
   })
   
   observeEvent(input$reset_fish, {
@@ -265,6 +294,9 @@ server <- shinyServer(function(input, output, session) {
   
   observe({
     req(input$sky_file)
+    #validate(
+    #  need(try(colnames(input$sky_file)), "Please select a data set")
+    #)
     rv$s1 <- retSkyDf(sky_datapath = input$sky_file$datapath)
   })
   
@@ -272,10 +304,29 @@ server <- shinyServer(function(input, output, session) {
     rv$s1 <- NULL
     shinyjs::reset('sky_file')
   })
-  
+
   observeEvent(input$submit_wgs, {
+  #observe({
     req(input$wgs_file, input$wgs_key)
+    #validate(need(x, message = FALSE))
+    #original
     rv$w1 <- retWgsDf(wgs_datapath = input$wgs_file$datapath, wgs_key_datapath = input$wgs_key$datapath)
+
+  })
+  
+  
+  #02-25-2019
+  output$txt_warn <- renderText({
+
+    rv$df_key <- retWgsDf_head(wgs_key_datapath = input$wgs_key$datapath)
+
+    if(is.null(colnames(rv$df_key))){
+      return("")
+    } else if(identical(colnames(rv$df_key), c("smpl_id", "category"))){
+      return("")
+    } else {
+      return("WARNING: Please make sure column names are specified correctly (see below)!")
+    }
   })
   
   observeEvent(input$reset_wgs, {
@@ -405,14 +456,20 @@ server <- shinyServer(function(input, output, session) {
   ### issue with ternary plots - 2019-02-05
   
   output$ternPlot <- renderPlot({
-    #p <- ggtern::ggtern() + 
-    #  geom_point(data=stsTbl(), 
-    #             aes(x = aneuploid,y=diploid,z=polyploid),
-    #             size = 3, alpha = 0.8)
-    p <- ggplot() + 
+    p <- ggtern::ggtern() + 
       geom_point(data=stsTbl(), 
-                 aes(x = aneuploid,y=diploid),
-                 size = 3, alpha = 0.8)
+                 aes(x = aneuploid,y=diploid,z=polyploid, color=category, shape=file_type),
+                 size = 3, alpha = 0.8) + 
+          xlab("") + ylab("") +
+          Tlab("Diploid") +
+          Llab("Aneuploid") +
+          Rlab("Polyploid") +
+          limit_tern(1.03,1.03,1.03) 
+    #print(stsTbl())
+    #p <- ggplot() + 
+    #  geom_point(data=stsTbl(), 
+    #             aes(x = aneuploid,y=diploid),
+    #             size = 3, alpha = 0.8)
     
     print(p)
   })
