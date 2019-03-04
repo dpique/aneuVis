@@ -728,17 +728,20 @@ platformConcordance2 <- function(input, output, session, sky_df, fish_df, wgs_df
           print(list_to_pass)
         }
         
+        print("ok1")
         aneupl_scores = purrr::map_df(.x = list_to_pass, .f = calc_aneupl_score, numX=numX, numY=numY)
-        
+        print("ok2")
         heterog_scores = purrr::map_df(.x = list_to_pass, .f = calc_heterog_score)
         anca_scores_normalized = purrr::map_df(.x = list_to_pass, .f = calc_anca_score_normalized, numX=numX, numY=numY)
         anca_scores = purrr::map_df(.x = list_to_pass, .f = calc_anca_score, numX=numX, numY=numY)
         instab_idx = purrr::map_df(.x = list_to_pass, .f = calc_instab_idx)
         perc_ploidy <- purrr::map_df(.x = list_to_pass, .f = calc_perc_ploidy, numX=numX, numY=numY)
+        print("ok3")
         sumStats <- purrr::reduce(list(aneupl_scores, heterog_scores, anca_scores_normalized, anca_scores, instab_idx, perc_ploidy), full_join, by=c("category", "file_type")) %>%
           select(category, file_type, n, everything())
+        print("ok4")
         return(sumStats)
-        print(sumStats)
+        #print(sumStats)
       })
 
   #can we just do an odds ratio type test
@@ -1038,12 +1041,59 @@ retFishDf_head <- function(fish_name, fish_datapath){
   print("allSame(tbl_list_colnames)")
   print(allSame(tbl_list_colnames))
   if(allSame(tbl_list_colnames) == TRUE | is.null(tbl_list_colnames)){
-    return("")
+    return(NULL)
   } else {
-    return("Check that the column names are identical between files!")
+    return("WARNING: Please check that the column names are identical between files before submitting!")
   }
 
 }
+
+retFishDf_head2 <- function(wgs_key_datapath){
+  # wgs_key_datapath = "~/Downloads/sc_wgs_key_test.xlsx"
+  if(length(wgs_key_datapath) == 0){
+    df <- ""
+  } else {
+    #function(fish_name, fish_datapath){
+    path_list <- as.list(fish_name)
+    tbl_list <- lapply(fish_datapath, read_excel)
+    df <- map2(.x = path_list, .y= tbl_list,
+                       .f = ~data.frame(category=.x, .y)) %>% #) %>%
+      do.call(rbind, .) 
+    #return(df)
+    #df <- read_excel(path = wgs_key_datapath[1], sheet = 1)
+  }
+  print("retFishDf_head2:")
+  print(df)
+  return(df)
+}
+
+
+retFishDf_head3 <- function(fish_name, fish_datapath){
+  #fish_name <- list.files("~/Downloads/aneuvis_testdat_FISH (4)/")
+  #fish_datapath <- paste0("~/Downloads/aneuvis_testdat_FISH (4)/", fish_name)
+  if(is.null(fish_name)){
+    return(NULL)
+  }
+  path_list <- as.list(fish_name)
+  tbl_list <- lapply(fish_datapath, read_excel)
+  #do all the columns have the same name?
+  
+  tbl_list_colnames <- lapply(tbl_list, colnames)
+  #print("tbl_list_colnames")
+  #print(tbl_list_colnames)
+  return(tbl_list_colnames)
+  
+  #allSame <- function(x) length(unique(x)) == 1
+  #print("allSame(tbl_list_colnames)")
+  #print(allSame(tbl_list_colnames))
+  #if(allSame(tbl_list_colnames) == TRUE | is.null(tbl_list_colnames)){
+  #  return(TRUE) #all the same
+  #} else {
+  #  return(FALSE)
+  #}
+  
+}
+
 
 
 

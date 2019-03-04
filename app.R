@@ -14,11 +14,9 @@ max_plots <- 75 # *maximum* total number of gridplots
 ui <- tagList(shinyjs::useShinyjs(), 
               withMathJax(), 
               navbarPage(
-                title = "aneuvis 1.0 (Currently Under Construction!)",
-                
+                title = "aneuvis 1.0", # (Currently Under Construction!)",
                 theme = shinythemes::shinytheme("spacelab"),
                 id = "inTabset",
-                
                 tabPanel("Home",  icon = icon("home"),
                          h3("Aneuvis is a web tool for analyzing chromosomal number variation in single cells."),
                          p("The three types of single-cell chromosomal data that can be uploaded into aneuvis are"),
@@ -38,7 +36,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                          h3("Do treatments A and B induce aneuploidy?"),
                          img(src="aneuvis_layout.png", width=700)
                 ),
-                tabPanel("Documentation", icon=icon("book"),
+                tabPanel("Documentation", icon=icon("book"), value = "FAQ", 
                          p("Aneuvis is the product of a collaboration between the",
                            tags$a(target = "_blank", 
                                   href = "http://www.einstein.yu.edu/faculty/9868/cristina-montagna/", 
@@ -57,8 +55,8 @@ ui <- tagList(shinyjs::useShinyjs(),
                          h3("FAQ"),
                          tags$ol(
                            tags$li(tags$b("Can I upload multiple files at once (e.g. both test and control data)?")),
-                           tags$ul("Yes. First, ensure that all files to be uploaded are in the same folder on your computer. 
-                                      Then, under the \"Upload Data\" tab, click \"Browse...\". Using your computer's file system navigator (e.g. Finder for Mac or Explorer for Windows), select all the desired files using \"Command + Click\"  selecting multiple files using \"Ctrl + click\" (on PC) or \"command + click \" (on Mac)."),
+                           tags$ul("Yes. Multiple files should be uploaded in a single step. First, ensure that all files to be uploaded are in the same folder on your computer. 
+                                      Then, under the \"Upload Data\" tab, click \"Browse...\". Using your computer's file system navigator (e.g. Finder (Mac) or Windows Explorer), select all the desired files using \"Ctrl + click\" (on PC) or \"command + click \" (on Mac)."),
                            tags$li(tags$b("I am trying to upload multiple FISH files in excel and I get an error. What should I do?")),
                            tags$ul("Check the column names in the excel files to make sure they are the same between all files."),
                            tags$li(tags$b("When uploading Excel files, I get a message that says 'server disconnected - Reload'.")),
@@ -66,10 +64,12 @@ ui <- tagList(shinyjs::useShinyjs(),
                            tags$li(tags$b("I am trying to upload an excel file and I get an error that looks like this:")), 
                            img(src="error_1.png", width=200),
                            tags$ul("This could be an issue with the file encoding. Try opening the file and saving it (using 'Save As...') with the same file name (without modifying the file). Then, try re-uploading the file into aneuvis."),
+                           tags$ul("Also, please ensure that the headers (i.e. first rows) of all the excel files are identical."),
                            
                            tags$li(tags$b("I see a message that says 'disconnect from the server'. Why is this?")),
                            tags$ul("There could be two reasons for this."),
-                           tags$ul("1. You may have been disconnected. Aneuvis sessions that are idle for longer than 1 hour are automatically disconnected, which helps us lower the total cost of running aneuvis. If you need to intermittently return to aneuvis, we suggest downloading and using the desktop version of aneuvis, which runs on your local computer and will not time-out."),
+                           tags$ul("1. You may have been disconnected. Aneuvis sessions that are idle for longer than 1 hour are automatically disconnected, which helps us lower the total cost of running aneuvis. If you need to intermittently return to aneuvis, we suggest downloading the desktop version (", tags$a(target = "_blank", 
+                                                                                                                                                                                                                                                                                                                            href = "https://drive.google.com/uc?export=download&id=1_5Jl7QNRMuPEls8paJfO34Oz-EFvgXjM", "beta version"), ", currently only available for Mac) of aneuvis, which runs on your local computer and will not time-out."),
                            tags$ul("2. There is a browser-specific issue. Aneuvis has been tested and works on Chrome, Safari, and Firefox. Please use one of these three browsers for the most consistent results."),
                            
                            tags$li(tags$b("I see a message that says \"An error has occurred. Check your logs or contact the app author for clarification.\" after uploading my FISH data. What should I do?")),
@@ -84,11 +84,19 @@ ui <- tagList(shinyjs::useShinyjs(),
                          HTML(paste0('<iframe width="700" height="500" src="https://www.youtube.com/embed/', "SWwBYFNb2PA" ,'" frameborder="5" allowfullscreen></iframe>'))
                 ),
                 tabPanel("Upload Data", icon=icon("upload"), value = "uploadTab",
+                         #tags$head(
+                         #  tags$style(HTML('#linkToFAQ{background-color:orange}'))
+                         #),
+                         p("Getting an error when uploading data? ", #div(id="linkToFAQ", tags$a("Check out the FAQ."))),
+                           actionButton("linkToFAQ", "Check out the FAQ.")),
+                         #tags$style("#linkToFAQ{background-color:orange}"), #"color: #fff; background-color: #337ab7; border-color: #2e6da4")),#"color: #808080; background-color: #FFFFFF; border-color: #FFFFFF")),
+
                          tabsetPanel(
                            tabPanel("FISH",
                                     #h2("Under Construction (Feb 5 2019): the code used to produce FISH gridplot visualizations is being updated. Visualizations are currently not working as expected."),
                                     h3("Upload fluorescence in situ hybridization (FISH) data"),
                                     p("Note: All FISH files to be compared must be uploaded together; otherwise, files will overwrite each other if uploaded 1 by 1."),
+                                    p("Please gather all excel files in 1 directory and upload all excel files in a single step."),
                                     p("FISH files containing between 2-4 chromosomes can be analyzed. Files with >4 chromosomes will be truncated to 4 chromosomes."),
                                     fileInput(
                                       'fish_files', 
@@ -102,6 +110,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = c(".xlsx", ".xls", ".csv", ".txt", ".tsv"),
                                       multiple = TRUE 
                                     ),
+                                    
                                     actionButton("submit_fish", "Submit and Go to Table Summary"),
                                     actionButton('reset_fish', 'Reset Input'),
                                     #Resetting input: https://gist.github.com/bborgesr/07406b30ade8a011e59971835bf6c6f7
@@ -131,7 +140,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       accept = ".txt"), 
                                     fileInput(
                                       inputId = "wgs_key",
-                                      label = span("Sample Key (.xls or .xlsx)",
+                                      label = span("Key (.xls or .xlsx)",
                                                    tags$a(
                                                      target = "_blank", 
                                                      "(example key)",
@@ -215,7 +224,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     verbatimTextOutput("brush_info_aneuHeteroSctrPlt"),
                                     hr(),
                                     h3("Ternary Plot of Proportion of Diploid, Polyploid, and Aneuploid Cells by Group"),
-                                    h2("This visualization is currently under construction"),
+                                    #h2("This visualization is currently under construction"),
                                     
                                     plotOutput("ternPlot"),
                                     hr(),
@@ -274,21 +283,67 @@ server <- shinyServer(function(input, output, session) {
     rv$f1 <- retFishDf(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
   })
   
+  observe({
+    req(input$fish_files)
+    #validate(
+    #  need(try(colnames(input$sky_file)), "Please select a data set")
+    #)
+    #rv$s1 <- retSkyDf(sky_datapath = input$sky_file$datapath)
+    rv$df_fish <- retFishDf_head3(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+  })
+  # stop 2-28-2019
   output$txt_warn_fish <- renderText({
+    allSame <- function(x) length(unique(x)) == 1
     
-    rv$df_fish <- retFishDf_head(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+    validate(
+      need(!is.null(rv$df_fish), "Please upload data files!")
+      #need(is.null(rv$df_fish) & !allSame(rv$df_fish), "Warning- please make sure column headers are same!")
+      #need(!allSame(rv$df_fish), ""
+      #need(!is.null(rv$df_fish), ""WARNING: Please make sure column")
+      #return("WARNING: Please make sure column names are specified correctly (see below)!")
+    )
+    
+    #rv$df_fish <- retFishDf_head3(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+    
+    
+    print("allSame(tbl_list_colnames)")
+    print(allSame(rv$df_fish))
+    allSameRes <- allSame(rv$df_fish)
+    #print(is.null(allSameRes))
+    print("allSameRes")
+    print(allSameRes)
+    
+    print("rv$df_fish")
+    print(rv$df_fish)
+    
+    #print()
+    #if(allSame(rv$df_fish) == TRUE | is.null(allSame(rv$df_fish))){
+      
+    if(is.null(rv$df_fish)){
+      return("Please upload data files!")
+    } else if(allSame(rv$df_fish) == TRUE){ #| is.null(allSame(rv$df_fish))){
+      return("") #all the same
+    #} else if(is.null(rv$df_fish)){
+     # return("Please upload data files!")
+    } else {
+      #rv$df_fish <- NULL
+      return("WARNING: Please make sure column names are specified correctly (see below)!")
+      #return("WARNING: Please make sure column names are specified correctly (see below)!")
+    }
+    #input$fish_files$name
+    #rv$df_fish <- retFishDf_head(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
     #return(rv$df_fish)
     #do all the columns have the same name?
-    if(is.null(colnames(rv$df_key))){
-      return("")
-    } else {
-      return(rv$df_fish)
-    }
- 
+    #if(rv$df_fish){#input$fish_files$name) | is.null(rv$df_fish)){# is.null(colnames(rv$df_fish))){
+    #  return("")
+    #} else if (!rv$df_fish) {
+    #  return("WARNING: Please make sure column names are specified correctly (see below)!")
+    #}
   })
   
   observeEvent(input$reset_fish, {
     rv$f1 <- NULL
+    rv$df_fish <- NULL
     shinyjs::reset('fish_files')
   })
   
@@ -316,9 +371,25 @@ server <- shinyServer(function(input, output, session) {
   
   
   #02-25-2019
+  
+  observe({
+    req(input$wgs_key)
+    #validate(
+    #  need(try(colnames(input$sky_file)), "Please select a data set")
+    #)
+    #rv$s1 <- retSkyDf(sky_datapath = input$sky_file$datapath)
+    #rv$df_fish <- retFishDf_head(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+    rv$df_key <- retWgsDf_head(wgs_key_datapath = input$wgs_key$datapath)
+    
+  })
+  
   output$txt_warn <- renderText({
 
-    rv$df_key <- retWgsDf_head(wgs_key_datapath = input$wgs_key$datapath)
+    validate(
+      need(!is.null(rv$df_key[1]$name), "Please upload key!")
+    )
+    
+    #$df_key <- retWgsDf_head(wgs_key_datapath = input$wgs_key$datapath)
 
     if(is.null(colnames(rv$df_key))){
       return("")
@@ -331,6 +402,7 @@ server <- shinyServer(function(input, output, session) {
   
   observeEvent(input$reset_wgs, {
     rv$w1 <- NULL
+    rv$df_key <- NULL 
     shinyjs::reset('wgs_file')
     shinyjs::reset('wgs_key')
   })
@@ -564,6 +636,11 @@ server <- shinyServer(function(input, output, session) {
                       selected = "tableTab")
   })
   
+  observeEvent(input$linkToFAQ, {
+    updateTabsetPanel(session, "inTabset", # tableTab
+                      selected = "FAQ")
+  })
+  
   observe({
     shinyjs::toggleState("submit_fish", !is.null(input$fish_files))
   })
@@ -702,4 +779,16 @@ server <- shinyServer(function(input, output, session) {
   )
 })
 
+if (interactive()) {
+  s <- session_info()
+  write_csv(x = plyr::ldply(s$platform), path = here("session_info", paste0(Sys.time(), "pltfrm.txt")))
+  write_csv(x = s$packages, path = here("session_info", paste0(Sys.time(), "pkgs.txt")))
+  si <- sessionInfo()
+  paste0(c(si$basePkgs, s$packages$package), collapse = "\\|^") 
+}
+
 shinyApp(ui, server)
+
+
+
+#What's necessary to run this package
