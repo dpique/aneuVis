@@ -1,5 +1,6 @@
 library(shiny)
 
+allSame <- function(x) length(unique(x)) == 1
 
 num_list = as.list(1:26)
 names(num_list) = letters
@@ -83,11 +84,13 @@ server <- shinyServer(function(input, output, session) {
   
   msg <- eventReactive({char_to_num(paste0(unlist(input$file1$name), collapse = "")) | input$reset}, {
     #df_test()
-    df <- retFishDf_head3(fish_name = file_input()$name, fish_datapath = file_input()$datapath)
-    if(is.null(df)){
+    #df <- retFishDf_head3(fish_name = file_input()$name, fish_datapath = file_input()$datapath)
+    if(is.null(df_test())){
       return("Plz upload data")
+    } else if(allSame(df_test())){
+      return("Data uploaded successfully!")
     } else {
-      return("data uploaded")
+      return("Please check column headers")
     }
     
   })
