@@ -56,7 +56,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                          tags$ol(
                            tags$li(tags$b("Can I upload multiple files at once (e.g. both test and control data)?")),
                            tags$ul("Yes. Multiple files should be uploaded in a single step. First, ensure that all files to be uploaded are in the same folder on your computer. 
-                                      Then, under the \"Upload Data\" tab, click \"Browse...\". Using your computer's file system navigator (e.g. Finder (Mac) or Windows Explorer), select all the desired files using \"Ctrl + click\" (on PC) or \"command + click \" (on Mac)."),
+                                   Then, under the \"Upload Data\" tab, click \"Browse...\". Using your computer's file system navigator (e.g. Finder (Mac) or Windows Explorer), select all the desired files using \"Ctrl + click\" (on PC) or \"command + click \" (on Mac)."),
                            tags$li(tags$b("I am trying to upload multiple FISH files in excel and I get an error. What should I do?")),
                            tags$ul("Check the column names in the excel files to make sure they are the same between all files."),
                            tags$li(tags$b("When uploading Excel files, I get a message that says 'server disconnected - Reload'.")),
@@ -75,10 +75,10 @@ ui <- tagList(shinyjs::useShinyjs(),
                            tags$li(tags$b("I see a message that says \"An error has occurred. Check your logs or contact the app author for clarification.\" after uploading my FISH data. What should I do?")),
                            tags$ul("There may be an issue with the layout of the uploaded Excel file(s). Try downloading the example FISH data (several Excel files). 
                                    You can directly modify these example Excel files, pasting in your own data into these files. Then, upload these data files to Aneuvis."),
-
+                           
                            tags$li(tags$b("I have an idea to improve aneuvis. How should I share this?")),
                            tags$ul("Email me (daniel.pique@med.einstein.yu.edu) with any suggestions. You can also open an issue on Github or submit a pull request.")
-                         ),
+                           ),
                          hr(),
                          h3("Video tutorial of aneuvis"),
                          HTML(paste0('<iframe width="700" height="500" src="https://www.youtube.com/embed/', "SWwBYFNb2PA" ,'" frameborder="5" allowfullscreen></iframe>'))
@@ -90,7 +90,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                          p("Getting an error when uploading data? ", #div(id="linkToFAQ", tags$a("Check out the FAQ."))),
                            actionButton("linkToFAQ", "Check out the FAQ.")),
                          #tags$style("#linkToFAQ{background-color:orange}"), #"color: #fff; background-color: #337ab7; border-color: #2e6da4")),#"color: #808080; background-color: #FFFFFF; border-color: #FFFFFF")),
-
+                         
                          tabsetPanel(
                            tabPanel("FISH",
                                     #h2("Under Construction (Feb 5 2019): the code used to produce FISH gridplot visualizations is being updated. Visualizations are currently not working as expected."),
@@ -130,11 +130,11 @@ ui <- tagList(shinyjs::useShinyjs(),
                                     fileInput(
                                       inputId = "wgs_file",
                                       label = span("Copy Number File (.txt)",
-                                           tags$a(
-                                             target = "_blank", 
-                                             "(example data)",
-                                             href = "https://docs.google.com/uc?export=download&id=1VW35NIXSCu7OKaFTSFF_LacwjBqM9JWo"
-                                           )
+                                                   tags$a(
+                                                     target = "_blank", 
+                                                     "(example data)",
+                                                     href = "https://docs.google.com/uc?export=download&id=1VW35NIXSCu7OKaFTSFF_LacwjBqM9JWo"
+                                                   )
                                       ),
                                       multiple = FALSE,
                                       accept = ".txt"), 
@@ -163,7 +163,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                       tags$a(target = "_blank", 
                                              href= "http://qb.cshl.edu/ginkgo/uploads/_t10breast_navin/SegCopy?uniq=1210441",
                                              "here"))
-                            ),
+                           ),
                            tabPanel("SKY",
                                     h3("Upload spectral karyotype (SKY) data"),
                                     fileInput(
@@ -174,7 +174,7 @@ ui <- tagList(shinyjs::useShinyjs(),
                                                      "(example data)",
                                                      href = "https://docs.google.com/uc?export=download&id=1hUP9yCWbDeh6Yf2IpR5LtaFs4iFK86tp"
                                                    )
-                                              ),
+                                      ),
                                       multiple = FALSE,
                                       accept = c(".xlsx", ".xls")
                                     ), 
@@ -212,8 +212,8 @@ ui <- tagList(shinyjs::useShinyjs(),
                            tabPanel("Platform concordance",
                                     platformConcordanceUI(id = "concord"))
                            
-                         )
-                         ),
+                           )
+                ),
                 tabPanel("Visualization", icon = icon("bar-chart-o"), value = "visTab",
                          downloadButton("report", label="Download visualizations (.pdf)", class = "butt"),
                          tabsetPanel(
@@ -271,81 +271,135 @@ ui <- tagList(shinyjs::useShinyjs(),
                            tabPanel("Multi-platform",
                                     permPlotTblMultiInputUI("multiple", header = "Multi-platform"))
                          )
-                         )))
+                )))
 
 server <- shinyServer(function(input, output, session) {
   ###########
   #1. Read in raw data
-  rv <- reactiveValues(f1 = NULL, s1=NULL, w1=NULL, df_key=NULL, df_fish=NULL)
+  rv <- reactiveValues(f1=NULL, s1=NULL, w1=NULL, df_key=NULL, df_fish=NULL, upload_state = NULL,
+                       count = 0)
+  
+  observeEvent(input$fish_files, {
+    rv$upload_state <- 'uploaded'
+    rv$count <- rv$count + 1
+    print("rv$count - file1")
+    print(rv$count)
+  })
+  
+  observeEvent(input$reset_fish, {
+    rv$upload_state <- 'reset'
+    rv$count <- rv$count + 1
+    print("rv$count - reset")
+    print(rv$count)
+    #shinyjs::reset('file1')
+    
+  })
+  
+  file_input <- reactive({
+    if (is.null(rv$upload_state)) {
+      return(NULL)
+    } else if (rv$upload_state == 'uploaded') {
+      return(input$fish_files)
+    } else if (rv$upload_state == 'reset') {
+      return(NULL)
+    }
+  })
+  
+  ####
+  
+  df_test <- eventReactive({char_to_num(paste0(unlist(input$fish_files$name), collapse = "")) | input$reset_fish}, {
+    df <- retFishDf_head3(fish_name = file_input()$name, fish_datapath = file_input()$datapath)
+    print("df:")
+    print(df)
+    return(df)
+  })
+  
+  msg <- eventReactive({char_to_num(paste0(unlist(input$fish_files$name), collapse = "")) | input$reset_fish}, {
+    #df_test()
+    #df <- retFishDf_head3(fish_name = file_input()$name, fish_datapath = file_input()$datapath)
+    if(is.null(df_test())){
+      #shinyjs::reset('file1')
+      return("Plz upload data")
+    } else if(allSame(df_test())){
+      return("Data uploaded successfully!")
+    } else {
+      return("Please check column headers")
+    }
+    
+  })
+  
+  output$txt_warn_fish <- renderText({msg()})
+  
+  ###
   
   observeEvent(input$submit_fish,{
     req(input$fish_files)
     rv$f1 <- retFishDf(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
   })
   
-  observe({
-    req(input$fish_files)
-    #validate(
-    #  need(try(colnames(input$sky_file)), "Please select a data set")
-    #)
-    #rv$s1 <- retSkyDf(sky_datapath = input$sky_file$datapath)
-    rv$df_fish <- retFishDf_head3(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
-  })
+  #observe({
+  #  req(input$fish_files)
+  #  #validate(
+  #  #  need(try(colnames(input$sky_file)), "Please select a data set")
+  #  #)
+  #  #rv$s1 <- retSkyDf(sky_datapath = input$sky_file$datapath)
+  #  rv$df_fish <- retFishDf_head3(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+  #})
   # stop 2-28-2019
-  output$txt_warn_fish <- renderText({
-    allSame <- function(x) length(unique(x)) == 1
-    
-    validate(
-      need(!is.null(rv$df_fish), "Please upload data files!")
-      #need(is.null(rv$df_fish) & !allSame(rv$df_fish), "Warning- please make sure column headers are same!")
-      #need(!allSame(rv$df_fish), ""
-      #need(!is.null(rv$df_fish), ""WARNING: Please make sure column")
-      #return("WARNING: Please make sure column names are specified correctly (see below)!")
-    )
-    
-    #rv$df_fish <- retFishDf_head3(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
-    
-    
-    print("allSame(tbl_list_colnames)")
-    print(allSame(rv$df_fish))
-    allSameRes <- allSame(rv$df_fish)
-    #print(is.null(allSameRes))
-    print("allSameRes")
-    print(allSameRes)
-    
-    print("rv$df_fish")
-    print(rv$df_fish)
-    
-    #print()
-    #if(allSame(rv$df_fish) == TRUE | is.null(allSame(rv$df_fish))){
-      
-    if(is.null(rv$df_fish)){
-      return("Please upload data files!")
-    } else if(allSame(rv$df_fish) == TRUE){ #| is.null(allSame(rv$df_fish))){
-      return("") #all the same
-    #} else if(is.null(rv$df_fish)){
-     # return("Please upload data files!")
-    } else {
-      #rv$df_fish <- NULL
-      return("WARNING: Please make sure column names are specified correctly (see below)!")
-      #return("WARNING: Please make sure column names are specified correctly (see below)!")
-    }
-    #input$fish_files$name
-    #rv$df_fish <- retFishDf_head(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
-    #return(rv$df_fish)
-    #do all the columns have the same name?
-    #if(rv$df_fish){#input$fish_files$name) | is.null(rv$df_fish)){# is.null(colnames(rv$df_fish))){
-    #  return("")
-    #} else if (!rv$df_fish) {
-    #  return("WARNING: Please make sure column names are specified correctly (see below)!")
-    #}
-  })
+  #output$txt_warn_fish <- renderText({
+  #  allSame <- function(x) length(unique(x)) == 1
+  #  
+  #  validate(
+  #    need(!is.null(rv$df_fish), "Please upload data files!")
+  #    #need(is.null(rv$df_fish) & !allSame(rv$df_fish), "Warning- please make sure column headers are same!")
+  #    #need(!allSame(rv$df_fish), ""
+  #    #need(!is.null(rv$df_fish), ""WARNING: Please make sure column")
+  #    #return("WARNING: Please make sure column names are specified correctly (see below)!")
+  #  )
+  #  
+  #  #rv$df_fish <- retFishDf_head3(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+  #  
+  #  
+  #  print("allSame(tbl_list_colnames)")
+  #  print(allSame(rv$df_fish))
+  #  allSameRes <- allSame(rv$df_fish)
+  #  #print(is.null(allSameRes))
+  #  print("allSameRes")
+  #  print(allSameRes)
+  #  
+  #  print("rv$df_fish")
+  #  print(rv$df_fish)
+  #  
+  #  #print()
+  #  #if(allSame(rv$df_fish) == TRUE | is.null(allSame(rv$df_fish))){
+  #    
+  #  if(is.null(rv$df_fish)){
+  #    return("Please upload data files!")
+  #  } else if(allSame(rv$df_fish) == TRUE){ #| is.null(allSame(rv$df_fish))){
+  #    return("") #all the same
+  #  #} else if(is.null(rv$df_fish)){
+  #   # return("Please upload data files!")
+  #  } else {
+  #    #rv$df_fish <- NULL
+  #    return("WARNING: Please make sure column names are specified correctly (see below)!")
+  #    #return("WARNING: Please make sure column names are specified correctly (see below)!")
+  #  }
+  #  #input$fish_files$name
+  #  #rv$df_fish <- retFishDf_head(fish_name = input$fish_files$name, fish_datapath = input$fish_files$datapath)
+  #  #return(rv$df_fish)
+  #  #do all the columns have the same name?
+  #  #if(rv$df_fish){#input$fish_files$name) | is.null(rv$df_fish)){# is.null(colnames(rv$df_fish))){
+  #  #  return("")
+  #  #} else if (!rv$df_fish) {
+  #  #  return("WARNING: Please make sure column names are specified correctly (see below)!")
+  #  #}
+  #})
   
-  observeEvent(input$reset_fish, {
-    rv$f1 <- NULL
-    rv$df_fish <- NULL
-    shinyjs::reset('fish_files')
-  })
+  #observeEvent(input$reset_fish, {
+  #  rv$f1 <- NULL
+  #  rv$df_fish <- NULL
+  #  shinyjs::reset('fish_files')
+  #})
   
   observe({
     req(input$sky_file)
@@ -359,14 +413,14 @@ server <- shinyServer(function(input, output, session) {
     rv$s1 <- NULL
     shinyjs::reset('sky_file')
   })
-
+  
   observeEvent(input$submit_wgs, {
-  #observe({
+    #observe({
     req(input$wgs_file, input$wgs_key)
     #validate(need(x, message = FALSE))
     #original
     rv$w1 <- retWgsDf(wgs_datapath = input$wgs_file$datapath, wgs_key_datapath = input$wgs_key$datapath)
-
+    
   })
   
   
@@ -384,13 +438,13 @@ server <- shinyServer(function(input, output, session) {
   })
   
   output$txt_warn <- renderText({
-
+    
     validate(
-      need(!is.null(rv$df_key[1]$name), "Please upload key!")
+      need(!is.null(rv$df_key), "Please upload key!")
     )
     
     #$df_key <- retWgsDf_head(wgs_key_datapath = input$wgs_key$datapath)
-
+    
     if(is.null(colnames(rv$df_key))){
       return("")
     } else if(identical(colnames(rv$df_key), c("smpl_id", "category"))){
@@ -496,22 +550,22 @@ server <- shinyServer(function(input, output, session) {
   output$sumryStatsTblPerChr <- DT::renderDataTable({
     validate(
       need(!is.null(input$sky_file) | !is.null(input$fish_files) | !is.null(input$wgs_file), " ") #'Please upload at least 1 file!')
-    ) 
+  ) 
     DT::datatable(stsTblPerChr(),       
                   filter = list(position = 'top', clear = FALSE),
                   options = list(
                     search = list(regex = TRUE, caseInsensitive = FALSE))) %>%
       DT::formatRound(5:7, 2)
   })
-
+  
   
   output$stats_report2 <- downloadHandler(
     filename = function() {
       paste0(Sys.Date(), "-aneuvis-stats-by-group.csv")
     },
-      content = function(file) {
-        write.csv(stsTbl(), file, row.names = FALSE)
-      }
+    content = function(file) {
+      write.csv(stsTbl(), file, row.names = FALSE)
+    }
   )
   
   output$stats_report3 <- downloadHandler(
@@ -523,7 +577,7 @@ server <- shinyServer(function(input, output, session) {
     }
   )
   
-
+  
   ### Adding ternary plots
   ### issue with ternary plots - 2019-02-05
   
@@ -532,11 +586,11 @@ server <- shinyServer(function(input, output, session) {
       geom_point(data=stsTbl(), 
                  aes(x = aneuploid,y=diploid,z=polyploid, color=category, shape=file_type),
                  size = 3, alpha = 0.8) + 
-          xlab("") + ylab("") +
-          Tlab("Diploid") +
-          Llab("Aneuploid") +
-          Rlab("Polyploid") +
-          limit_tern(1.03,1.03,1.03) 
+      xlab("") + ylab("") +
+      Tlab("Diploid") +
+      Llab("Aneuploid") +
+      Rlab("Polyploid") +
+      limit_tern(1.03,1.03,1.03) 
     #print(stsTbl())
     #p <- ggplot() + 
     #  geom_point(data=stsTbl(), 
@@ -737,8 +791,8 @@ server <- shinyServer(function(input, output, session) {
         #                           minChr = 1, 
         #                           maxChr = maxChrPlus1, xlab = x_y_axis_lab[1], ylab=x_y_axis_lab[2])
         plt <- create_perc_matr2.simple(matr_plot, title = classes[all_combos_chr_pairs_and_classes()[my_i,2]], 
-                                   minChr = 1, 
-                                   maxChr = maxChrPlus1, xlab = x_y_axis_lab[1], ylab=x_y_axis_lab[2])
+                                        minChr = 1, 
+                                        maxChr = maxChrPlus1, xlab = x_y_axis_lab[1], ylab=x_y_axis_lab[2])
         
         #create_perc_matr2.simple
         return(plt)
